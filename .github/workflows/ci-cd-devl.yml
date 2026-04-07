@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/deploy-reusable.yml
     with:
       environment-name: 'Development'
-      app-name: 'TU_APP_DEVL'
+      app-name: 'secihti7dev'
       build-definition: 'BackOfficeDEVL'
       settings-var: ${{ vars.DEVL_JSON }}
     secrets:

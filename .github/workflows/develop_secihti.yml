@@ -71,6 +71,14 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_896176526B734CAB99D11B7E5B8F5F01 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_75E8081EC6784549AEC440A3108050B1 }}
 
+      - name: Enable clean deploy (Run From Package)
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            # Busca el Resource Group dinámicamente y obliga a la app a usar el zip sin archivos viejos
+            RG=$(az webapp list --query "[?name=='secihti'].resourceGroup" -o tsv)
+            az webapp config appsettings set -g $RG -n secihti --settings WEBSITE_RUN_FROM_PACKAGE=1
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3

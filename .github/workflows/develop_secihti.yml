@@ -26,9 +26,13 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Inject Configuration (DEVL_JSON)
+        env:
+          DEVL_JSON_CONTENT: ${{ vars.DEVL_JSON }}
         run: |
-          if [ -n "${{ vars.DEVL_JSON }}" ]; then
-            echo '${{ vars.DEVL_JSON }}' > appsettings.json
+          if [ -n "$DEVL_JSON_CONTENT" ]; then
+            echo "$DEVL_JSON_CONTENT" > appsettings.json
+          else
+            echo "La variable DEVL_JSON está vacía."
           fi
 
       - name: Build with dotnet

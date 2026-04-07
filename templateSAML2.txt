@@ -1,0 +1,3277 @@
+///////////////////////////////
+///////****** templateSAML2 ******///////
+///////////////////////////////
+
+////////  Tecnología no detectada  ////////
+(Lenguajes: C#, CSS, HTML, JSON, JavaScript, Markdown, SCSS, Shell, Text, TypeScript, YAML)
+
+ÍNDICE DE ARCHIVOS INCLUIDOS:
+ - appsettings.json
+ - Flujo Despliegue.md
+ - README.md
+ - Dockerfile.dev
+ - init-project.sh
+ - Secihti.csproj
+ - .\Logs\secihti-20260407.txt
+ - docker-compose.yml
+ - appsettings.Development.json
+ - .env.example
+ - Program.cs
+ - ClientApp/aspnetcore-adapter.js
+ - ClientApp/README.md
+ - ClientApp/ngserve.cmd
+ - ClientApp/angular.json
+ - ClientApp/package.json
+ - ClientApp/tsconfig.json
+ - ClientApp/eslint.config.js
+ - ClientApp/.browserslistrc
+ - ClientApp/src/index.html
+ - ClientApp/src/main.ts
+ - ClientApp/src/tsconfig.app.json
+ - ClientApp/src/styles.scss
+ - ClientApp/src/polyfills.ts
+ - ClientApp/src/tsconfig.spec.json
+ - ClientApp/src/app/app.component.html
+ - ClientApp/src/app/app.routes.ts
+ - ClientApp/src/app/app.component.ts
+ - ClientApp/src/app/app.config.ts
+ - ClientApp/src/app/models/user-claims.model.ts
+ - ClientApp/src/app/models/response-api.model.ts
+ - ClientApp/src/app/components/not-found-page/not-found-page.component.html
+ - ClientApp/src/app/components/not-found-page/not-found-page.component.ts
+ - ClientApp/src/app/components/not-found-page/not-found-page.component.css
+ - ClientApp/src/app/components/layout/layout.component.css
+ - ClientApp/src/app/components/layout/layout.component.html
+ - ClientApp/src/app/components/layout/layout.component.ts
+ - ClientApp/src/app/components/federation/federation.component.ts
+ - ClientApp/src/app/components/federation/federation.component.css
+ - ClientApp/src/app/components/federation/federation.component.html
+ - ClientApp/src/app/guard/user-session.guard.ts
+ - ClientApp/src/app/guard/admin.guard.ts
+ - ClientApp/src/app/interceptor/token-api.interceptor.ts
+ - ClientApp/src/app/services/session-refresh.service.ts
+ - ClientApp/src/app/services/session.service.ts
+ - ClientApp/src/app/services/notification-snackbar.service.ts
+ - ClientApp/src/environments/environment.interface.ts
+ - ClientApp/src/environments/environment.pprd.ts
+ - ClientApp/src/environments/environment.prod.ts
+ - ClientApp/src/environments/environment.ts
+ - ClientApp/src/assets/.gitkeep
+ - wwwroot/.gitkeep
+ - Models/Common/Response.cs
+ - Models/Common/UserClaims.cs
+ - Common/AuthHelper.cs
+ - Common/DevAuthHandler.cs
+ - Common/GlobalExceptionMiddleware.cs
+ - Properties/launchSettings.json
+ - github-workflow-templates/ci-cd-pprd.yml
+ - github-workflow-templates/ci-cd-devl.yml
+ - github-workflow-templates/deploy-reusable.yml
+ - github-workflow-templates/ci-cd-prod.yml
+ - Controllers/HomeController.cs
+ - Controllers/HealthController.cs
+
+================================================================================
+
+// appsettings.json
+
+{
+  "AllowedOrigins": [
+    "https://secihti.tec.mx"
+  ],
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Warning",
+      "Override": {
+        "Microsoft": "Error",
+        "System": "Error"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "Console",
+        "Args": {
+          "theme": "Serilog.Sinks.SystemConsole.Themes.AnsiConsoleTheme::Code, Serilog.Sinks.Console",
+          "outputSecihti": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{User}] [{Application}] {Message} {NewLine} {Exception}"
+        }
+      },
+      {
+        "Name": "File",
+        "Args": {
+          "path": ".\\Logs\\secihti-.txt",
+          "rollingInterval": "Day",
+          "outputSecihti": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{User}] [{Application}] {Message} {NewLine} {Exception}"
+        }
+      }
+    ],
+    "Enrich": ["FromLogContext", "WithMachineName", "WithThreadId"],
+    "Properties": {
+      "Application": "Secihti"
+    }
+  },
+  "ClaimMappings": {
+    "PersonID": "IDPersona",
+    "UserType": "TipoUsuario",
+    "PayrollID": "nameidentifier",
+    "Email": "NAM_upn",
+    "Profiles": "perfiles",
+    "ITESMProfFuncionDesc": "ITESMProfFuncionDesc",
+    "ITESMProfFuncion": "ITESMProfFuncion"
+  },
+  "keyVaultUri": "https://kv-YOUR-KEYVAULT.vault.azure.net/",
+  "Saml2": {
+    "IdPMetadata": "https://amfsdevl.tec.mx/nidp/saml2/metadata",
+    "Issuer": "https://secihti.tec.mx/Auth/AssertionConsumerService",
+    "SingleSignOnDestination": "https://amfsdevl.tec.mx/nidp/saml2/sso",
+    "SingleLogoutDestination": "https://amfsdevl.tec.mx/nidp/saml2/slo",
+    "SingleLogoutDestinationReturn": "https://amfsdevl.tec.mx/nidp/saml2/slo_return",
+    "LogOutUrl": "https://amfsdevl.tec.mx/nidp/app/logout",
+    "SignatureAlgorithm": "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+    "SignAuthnRequest": "true",
+    "CertificateValidationMode": "None",
+    "RevocationMode": "NoCheck",
+    "SigningCertificate": "",
+    "SigningCertificatePassword": ""
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+** Flujo Despliegue.md **
+
+# Arquitectura de Despliegue y Flujo CI/CD - TEMPLATE
+
+Este documento detalla cómo funciona el ciclo de vida de la aplicación, desde la ejecución local en la computadora del desarrollador hasta su publicación automatizada en los diferentes entornos de Azure (Desarrollo, Pre-producción y Producción).
+
+---
+
+## 1. Local vs. Nube: Conceptos Base
+
+El proyecto tiene dos formas principales de ejecutarse:
+
+### Entorno Local (`docker-compose.dev.yml`) y la magia del archivo `.env`
+- **Propósito:** Desarrollo rápido e iteración ("Hot Reload") sin comprometer secretos.
+- **Flujo:** Utiliza Docker para montar volúmenes locales. Ejecuta el comando `dotnet watch run`, que detecta cada vez que guardas un archivo de código y reinicia la aplicación de forma automática sin reconstruir toda la imagen.
+- **Configuración y Jerarquía de Archivos:**
+  Cuando levantas el proyecto localmente mediante Docker Compose, la configuración del Backend (.NET) se construye como un "pastel de varias capas" en este orden:
+  1. **`appsettings.json`**: Se carga primero, tiene las configuraciones globales o base.
+  2. **`appsettings.Development.json`**: Se sobrepone al anterior. Docker lo activa e inyecta porque dentro de tu archivo `.env` tienes declarada la clave `ASPNETCORE_ENVIRONMENT=Development`. Es el lugar perfecto para escribir cosas no sensibles pero útiles de local (por ejemplo, cambiar la cadena de conexión a tu Base de Datos local/desarrollo tipo `AzureSql` sin afectar el JSON principal).
+  3. **Variables de Entorno (Archivo `.env`)**: Se cargan al final y **tienen el poder absoluto, sobrescribiendo los archivos JSON anteriores**. 
+     - Este archivo nunca se sube a GitHub porque contiene las cosas realmente sensibles, como certificados encriptados SAML2 (`Saml2__SigningCertificatePassword`), contraseñas o el Client Secret de PowerBI (`ConnectionPowerBi__ClientSecret`).
+     - **Tip técnico:** Para reemplazar un valor de JSON anidado, .NET utiliza doble guion bajo `__`. Es decir, definir `Saml2__SigningCertificate` en el `.env` es el equivalente directo de ir al archivo `appsettings.json` e inyectarlo dentro del bloque de configuración `{ "Saml2" : { "SigningCertificate" : "..." } }`.
+
+### Entornos de Nube (Azure Web Apps via GitHub Actions)
+- **Propósito:** Alojar la aplicación para usuarios (testers, clientes, negocio) con alta seguridad y empaquetado optimizado (`Release`).
+- **Flujo:** Nadie publica manualmente desde su computadora. En su lugar, cuando se hace un *push* a ramas específicas, **GitHub Actions** descarga el código, inyecta las credenciales/servidores correctos de forma dinámica, compila ambos proyectos (Angular y .NET) y los envía a Azure.
+
+---
+
+## 2. Los tres entornos (DEVL, PPRD, PROD)
+
+El ciclo de integración y despliegue continuo (CI/CD) está dividido en tres ramas de código principales y tres web apps en Azure separadas:
+
+| Ramas Git | Ambiente | Web App objetivo en Azure | Workflow de GitHub |
+| :--- | :--- | :--- | :--- |
+| `develop` | **DEVL** (Desarrollo) | `secihti7dev` | `fixci-cd_secihti7dev.yml` |
+| `release` | **PPRD** (Pre-Producción) | `WA-PPRD-TEMPLATE` | `fixci-cd_wa-pprd-secihti7d.yml` |
+| `main` | **PROD** (Producción) | `WA-PROD-TEMPLATE` | `ci-cd-main_wa-prod-secihti7d.yml` |
+
+> [!NOTE]
+> A medida que la aplicación avanza hacia PROD, los flujos de GitHub se vuelven más estrictos. Por ejemplo, en PPRD y PROD, el pipeline se encarga de detener la aplicación de Azure (`type: 'stop'`), limpiar los archivos de destino (`clean: true`), publicar, y finalmente realizar un test (*curl*) levantando el servidor. Esto evita que los archivos queden bloqueados mientras un usuario los visita.
+
+---
+
+## 3. Configuración Dinámica del Backend (.NET)
+
+Para garantizar la seguridad y el aislamiento entre ambientes, el código fuente oficial del repositorio **NO contiene las conexiones, las URL exactas ni las contraseñas** reales para la nube.
+
+Instead, GitHub Actions tiene Variables de Entorno (`vars.DEVL_JSON`, `vars.PPRD_JSON`, `vars.PROD_JSON`) configuradas dentro del portal de GitHub.
+
+**Paso clave en el workflow:**
+```bash
+echo '${{vars.PROD_JSON}}' > appsettings.json
+```
+
+**¿Qué efecto tiene esto?**
+Antes de hacer la compilación final (`dotnet publish`), GitHub borra todo lo que trajiste en el repositorio para `appsettings.json` y lo reemplaza con un JSON perfecto de esa variable. Esto cambia dinámicamente los siguientes accesos:
+1. **AllowedOrigins (CORS):** Define si acepta tráfico de `https://secihti7dev.azurewebsites.net` o el dominio oficial `https://secihti7d.tec.mx`.
+2. **Key Vault:** La bóveda de secretos cambia. Dev no puede leer los secretos de Prod.
+3. **Autenticación (SAML2):** Reemplazan las URLs de Single Sign On, cambiando de dominios de prueba (`amfsdevl.tec.mx`) a los de producción (`amfs.tec.mx`), así como las redirecciones seguras permitidas (*AssertionConsumerService*).
+
+### 3.1. El Rol y Flujo del Azure Key Vault
+El archivo `.env` o el `appsettings.json` te dan la URL del servidor seguro (`KeyVaultUri`), pero los secretos reales (contraseñas de la base de datos, Client Secrets, certificados) viven exclusivamente en la bóveda de Azure. 
+
+De acuerdo a cómo está construido tu archivo `Program.cs`, **el ciclo de los secretos de Key Vault es el siguiente:**
+
+1. **GitHub Actions no lee secretos:** Durante el despliegue automático, la nube solo cambia la URL que apunta a la bóveda, pero jamás extrae contraseñas. El código se empaca limpio y sin secretos.
+2. **Arranque en Azure Server (Runtime):** Cuando la Web App de Azure prende el servidor, .NET ejecuta `Program.cs`. En ese instante, la aplicación usa una identidad administrada (`DefaultAzureCredential`) para "tocarle la puerta" al Key Vault asociado a su ambiente.
+3. **Inyección en Memoria:** Descarga los secretos y los mezcla directamente en la memoria. Por ejemplo, en Azure Key Vault puedes tener un secreto llamado `ConnectionPowerBi--ClientSecret`, y .NET lo asimilará instantáneamente como si estuviera en el `appsettings.json`.
+4. **¿Por qué falla si no tengo el `.env` cuando programo local?:** Revisando tu código en `Program.cs`, existe esta validación: `if (!env.IsDevelopment())`. Esto significa que **cuando levantas el Docker**, el sistema salta la parte de conectarse a Azure Key Vault. Ya que localmente estás desconectado de esa bóveda de la nube, ¡te conviertes en tu propio Key Vault! Esa es la principal razón por la que siempre debes suministrar las llaves secretas o la cadena real a mano dentro del bloque de tu `.env` o tu `appsettings.Development.json`.
+
+---
+
+## 4. Configuración Dinámica del Frontend (Angular)
+
+Así como el Backend cambia su configuración mediante el `appsettings.json`, el **Frontend (ClientApp)** necesita compilarse de diferente manera dependiendo del entorno (para usar las variables de entorno de Angular desde su carpeta `environments/`).
+
+Para lograr esto, las Actions combinan esfuerzos con el archivo del proyecto `TEMPLATE.csproj`.
+
+**En el flujo de trabajo (.yml):**
+Se define qué definición usar, por ejemplo:
+```yaml
+env:
+  Build_DefinitionName: 'BackOfficePROD'
+```
+
+**En el archivo TEMPLATE.csproj:**
+El archivo del proyecto detecta esta variable y ejecuta automáticamente el script de `npm` que le corresponde:
+```xml
+<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PROD" Condition=" '$(Build_DefinitionName)' == 'BackOfficePROD'"/>   
+<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PPRD" Condition="'$(Build_DefinitionName)' == 'BackOfficePPRD'"/>
+<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:DEVL" Condition="'$(Build_DefinitionName)' == 'BackOfficeDEVL'"/>
+```
+
+**¿Qué efecto tiene esto?**
+El comando `npm run build:XXX` tomará toda la aplicación de Angular, reemplazará el `environment.ts` base con el de PPRD/PROD/DEVL, construirá los binarios optimizados (JavaScript estático dentro de `/dist`), y .NET recogerá esa carpeta y la empaquetará junto a la DLL de backend.
+
+---
+
+## 5. Resumen del Flujo Completo paso a paso.
+
+Cada vez que se hace un *Push* en las ramas principales, este es el ciclo de vida en los "Runners" de GitHub de principio a fin:
+
+1. **Checkout**: GitHub descarga una copia limpia de la respectiva rama.
+2. **Update Settings**: Se inyecta la variable JSON del ambiente correspondiente en el archivo `appsettings.json` del código fuente. (Backend Configurado ✅).
+3. **Setup .NET**: Instala la versión de .NET 8 necesaria. En PPRD y PROD, aplica borrado de caches y recupero de paquetes limpio (`dotnet clean` y `dotnet restore`).
+4. **Publish**: Inicia la compilación del código .NET mediante `dotnet publish -c Release --no-restore --no-build` (en PROD/PPRD aseguran no volver a realizar el build/restore que ya se hizo, ahorrando tiempo).
+5. **Interceptación del CSPROJ**: Cuando la herramienta de Microsoft detecta que debe hacer el publish, llama internamente a instalar los paquetes (`npm install`) y a construir el frontend (`npm run build:xxx` dependiendo del entorno configurado). (Frontend Configurado ✅).
+6. **Empaquetado final**: .NET incluye los archivos finales compilados de Angular dentro de la salida nativa (`/myapp`).
+7. **Detención**: *(Solo PPRD y PROD)* Se envía un comando a Azure ordenando la detención preventiva del Azure Web App para soltar los bloqueos de lectura de archivos.
+8. **Despliegue a Azure**: El artefacto final comprimido se envía al App Service usando el perfil de publicación seguro (`publish-profile`). Activando la opción `clean: true`, Azure borra los archivos viejos y coloca solo los nuevos.
+9. **Reanudación y Smoke Test**: *(Solo PPRD y PROD)* Arranca la aplicación nuevamente de forma forzada (`restart: true`) en Azure y el workflow realiza peticiones y pausas de 30 segundos con un `curl` (petición web) para encender la aplicación y validar que todo esté operando correctamente.
+
+> [!WARNING]
+> Dado que este flujo de construcción está fuertemente acoplado, si tienes un error local en tu código de TypeScript que impide compilar Angular o un error de sintaxis en los JSON almacenados en GitHub Actions... **fallará todo el despliegue**. Asegúrate de validar localmente los builds antes de hacer push en ramas clave.
+
+
+--------------------------------------------------------------------------------
+
+** README.md **
+
+# Template SAML2 + Angular + Bamboo
+
+Plantilla base para aplicaciones web del Tec de Monterrey con autenticacion SAML2,
+Angular standalone y el Design System Bamboo (ds-ng). Incluye Docker para desarrollo local,
+Azure Key Vault para secretos, y CI/CD con GitHub Actions para tres ambientes.
+
+---
+
+## Tabla de contenido
+
+1. [Requisitos previos](#requisitos-previos)
+2. [Inicio rapido](#inicio-rapido)
+3. [Estructura del proyecto](#estructura-del-proyecto)
+4. [Arquitectura](#arquitectura)
+5. [Configuracion del backend (.NET 8)](#configuracion-del-backend-net-8)
+6. [Configuracion del frontend (Angular)](#configuracion-del-frontend-angular)
+7. [Autenticacion SAML2](#autenticacion-saml2)
+8. [Desarrollo local](#desarrollo-local)
+9. [Docker](#docker)
+10. [Environments y configuracion por ambiente](#environments-y-configuracion-por-ambiente)
+11. [CI/CD con GitHub Actions](#cicd-con-github-actions)
+12. [Azure Key Vault](#azure-key-vault)
+13. [Agregar nuevas funcionalidades](#agregar-nuevas-funcionalidades)
+14. [Referencia de archivos clave](#referencia-de-archivos-clave)
+15. [Troubleshooting](#troubleshooting)
+
+---
+
+## Requisitos previos
+
+| Herramienta | Version minima | Uso |
+|-------------|----------------|-----|
+| .NET SDK | 8.0+ | Backend ASP.NET Core |
+| Node.js | 20.x+ | Build de Angular |
+| npm | 10.x+ | Dependencias frontend |
+| Angular CLI | 17+ | Desarrollo frontend |
+| Docker | 24+ | Desarrollo local (opcional) |
+| Git | 2.40+ | Control de versiones |
+
+---
+
+## Inicio rapido
+
+### 1. Clonar y personalizar
+
+```bash
+git clone https://github.com/tu-org/template-saml2.git MiProyecto
+cd MiProyecto
+chmod +x init-project.sh
+./init-project.sh MiProyecto
+```
+
+El script `init-project.sh` hace lo siguiente automaticamente:
+- Reemplaza todos los nombres de la plantilla (namespaces C#, package.json, docker-compose,
+  configuraciones de Serilog, etc.) con el nombre de tu proyecto
+- Renombra el archivo `.csproj`
+- Actualiza `angular.json` y `index.html`
+- Genera variantes PascalCase (para C#) y lowercase (para Docker/npm)
+
+### 2. Configurar variables locales
+
+```bash
+cp .env.example .env
+# Edita .env con tus valores locales
+```
+
+### 3. Instalar dependencias y ejecutar
+
+```bash
+# Backend + Frontend juntos
+dotnet restore
+cd ClientApp && npm install --legacy-peer-deps && cd ..
+dotnet run
+```
+
+La app se abre en `https://localhost:5001` con claims simulados desde `appsettings.Development.json`.
+
+---
+
+## Estructura del proyecto
+
+```
+/
+├── Program.cs                          # Entry point (.NET 8 minimal hosting)
+├── {Proyecto}.csproj                   # Configuracion del proyecto .NET
+├── appsettings.json                    # Config de produccion (SAML, Serilog, CORS)
+├── appsettings.Development.json        # Config de desarrollo (bypass SAML, user mock)
+├── .env.example                        # Variables de entorno de ejemplo
+├── init-project.sh                     # Script de bootstrap para proyectos nuevos
+├── docker-compose.yml                  # Docker Compose para desarrollo local
+├── Dockerfile.dev                      # Dockerfile de desarrollo
+├── Flujo Despliegue.md                 # Documentacion de despliegue (detallada)
+│
+├── Controllers/
+│   ├── HomeController.cs               # Endpoint GetUserClaims (autenticado)
+│   └── HealthController.cs             # Health check (anonimo, para CI/CD)
+│
+├── Common/
+│   ├── AuthHelper.cs                   # Mapeo de claims SAML → UserClaims
+│   ├── DevAuthMiddleware.cs            # Auth fake para desarrollo + DevAuthHandler
+│   └── GlobalExceptionMiddleware.cs    # Manejo global de errores
+│
+├── Models/
+│   └── Common/
+│       ├── Response.cs                 # Contrato generico ApiResponse<T>
+│       └── UserClaims.cs               # Modelo de claims del usuario
+│
+├── ClientApp/                          # === ANGULAR FRONTEND ===
+│   ├── angular.json                    # Config de Angular (builds, environments)
+│   ├── package.json                    # Dependencias npm
+│   ├── src/
+│   │   ├── main.ts                     # Bootstrap de la app Angular
+│   │   ├── index.html                  # HTML principal
+│   │   ├── styles.scss                 # Estilos globales (Bamboo)
+│   │   ├── polyfills.ts                # Polyfills (zone.js, localize)
+│   │   │
+│   │   ├── environments/
+│   │   │   ├── environment.interface.ts  # Interfaz TypeScript (type-safe)
+│   │   │   ├── environment.ts            # Desarrollo
+│   │   │   ├── environment.pprd.ts       # Pre-produccion
+│   │   │   └── environment.prod.ts       # Produccion
+│   │   │
+│   │   └── app/
+│   │       ├── app.component.ts/html     # Root component (BmbTheme)
+│   │       ├── app.config.ts             # Providers (router, http, interceptors)
+│   │       ├── app.routes.ts             # Rutas principales
+│   │       │
+│   │       ├── components/
+│   │       │   ├── federation/           # Pantalla de carga post-login SAML
+│   │       │   ├── layout/               # Shell con sidebar (BmbContainer)
+│   │       │   └── not-found-page/       # Pagina 404
+│   │       │
+│   │       ├── guard/
+│   │       │   ├── user-session.guard.ts  # Protege rutas por sesion activa
+│   │       │   └── admin.guard.ts         # roleGuard() configurable por roles
+│   │       │
+│   │       ├── interceptor/
+│   │       │   └── token-api.interceptor.ts  # Cache-Control + refresh en 401/403
+│   │       │
+│   │       ├── models/
+│   │       │   ├── response-api.model.ts  # ApiResponse<T> (alineado con backend)
+│   │       │   └── user-claims.model.ts   # UserClaims (alineado con backend)
+│   │       │
+│   │       └── services/
+│   │           ├── session.service.ts           # Sesion del usuario (sessionStorage)
+│   │           ├── session-refresh.service.ts   # Refresh automatico cada 4 min
+│   │           └── notification-snackbar.service.ts  # Snackbar de Material
+│   │
+│   └── ...
+│
+├── Properties/
+│   └── launchSettings.json             # Puertos de desarrollo (5001/5000)
+│
+└── github-workflow-templates/
+    ├── deploy-reusable.yml             # Workflow reutilizable (build + deploy)
+    ├── ci-cd-devl.yml                  # Deploy a DEVL (branch: develop)
+    ├── ci-cd-pprd.yml                  # Deploy a PPRD (branch: release)
+    └── ci-cd-prod.yml                  # Deploy a PROD (branch: main)
+```
+
+---
+
+## Arquitectura
+
+```
+                    ┌──────────────────────────────────────────┐
+                    │              Azure Web App               │
+                    │                                          │
+  Usuario ──HTTPS──►│  ASP.NET Core 8 (.NET)                  │
+                    │  ├─ GlobalExceptionMiddleware             │
+                    │  ├─ DevAuthMiddleware (solo si bypass)    │
+                    │  ├─ Authentication (SAML2 o DevAuth)     │
+                    │  ├─ Authorization ([Authorize])          │
+                    │  ├─ CORS                                 │
+                    │  ├─ Controllers (API)                    │
+                    │  └─ SPA (Angular)                        │
+                    │                                          │
+                    │  Angular Standalone                      │
+                    │  ├─ Bamboo Design System (ds-ng)         │
+                    │  ├─ FederationComponent (post-login)     │
+                    │  ├─ LayoutComponent (shell + sidebar)    │
+                    │  ├─ Guards (session + roles)             │
+                    │  └─ SessionRefreshService (cada 4 min)   │
+                    │                                          │
+                    └────────────┬─────────────────────────────┘
+                                 │
+                    ┌────────────▼─────────────┐
+                    │     Azure Key Vault      │
+                    │  (secretos SAML, certs)   │
+                    └──────────────────────────┘
+                                 │
+                    ┌────────────▼─────────────┐
+                    │     IdP SAML (amfs)       │
+                    │  amfs.tec.mx / amfsdevl   │
+                    └──────────────────────────┘
+```
+
+---
+
+## Configuracion del backend (.NET 8)
+
+### Program.cs (Minimal Hosting)
+
+El archivo `Program.cs` unifica toda la configuracion en un solo archivo con top-level statements.
+El flujo es:
+
+1. **Azure Key Vault** (solo en ambientes publicados)
+2. **Serilog** para logging estructurado
+3. **SAML2 o DevAuth** segun la config `Auth:BypassSaml`
+4. **Middleware pipeline**: Exception → Auth → SAML → Authorization → CORS → Controllers → SPA
+
+### appsettings.json — Configuracion principal
+
+```jsonc
+{
+  // CORS: origenes permitidos
+  "AllowedOrigins": ["https://tu-app.tec.mx"],
+
+  // Auth: bypass de SAML para desarrollo
+  // (solo en appsettings.Development.json)
+  "Auth": { "BypassSaml": true },
+
+  // Mapeo de claims SAML → propiedades de UserClaims
+  // Cambia estos valores si tu IdP usa nombres de claims diferentes
+  "ClaimMappings": {
+    "PersonID": "IDPersona",
+    "UserType": "TipoUsuario",
+    "PayrollID": "nameidentifier",
+    "Email": "NAM_upn",
+    "Profiles": "perfiles",
+    "ITESMProfFuncionDesc": "ITESMProfFuncionDesc",
+    "ITESMProfFuncion": "ITESMProfFuncion"
+  },
+
+  // Azure Key Vault
+  "keyVaultUri": "https://kv-tu-app.vault.azure.net/",
+
+  // SAML2: configuracion de federacion
+  "Saml2": {
+    "IdPMetadata": "https://amfsdevl.tec.mx/nidp/saml2/metadata",
+    "Issuer": "https://tu-app.tec.mx/Auth/AssertionConsumerService",
+    "SingleSignOnDestination": "https://amfsdevl.tec.mx/nidp/saml2/sso",
+    "SingleLogoutDestination": "https://amfsdevl.tec.mx/nidp/saml2/slo",
+    "SignatureAlgorithm": "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+    "SignAuthnRequest": "true",
+    "CertificateValidationMode": "None",
+    "RevocationMode": "NoCheck",
+    "SigningCertificate": "",       // Base64 del .pfx (en Key Vault)
+    "SigningCertificatePassword": "" // Password del .pfx (en Key Vault)
+  },
+
+  // Serilog: logging
+  "Serilog": { /* ... */ }
+}
+```
+
+### appsettings.Development.json — Desarrollo local
+
+```json
+{
+  "Auth": {
+    "BypassSaml": true
+  },
+  "AllowedOrigins": ["https://localhost:5001"],
+  "UserImpersonation": {
+    "PayrollID": "L00000000",
+    "PersonID": "00000000",
+    "Email": "tu.nombre@tec.mx",
+    "UserType": "Administrador",
+    "Profiles": "Colaborador"
+  }
+}
+```
+
+Cuando `Auth:BypassSaml` es `true`:
+- No se conecta al IdP SAML ni descarga metadata
+- Se registra un esquema de autenticacion fake (`DevAuth`)
+- Los claims se inyectan desde `UserImpersonation`
+- `[Authorize]` en controllers funciona normalmente
+
+### Contrato de respuesta API
+
+Backend y frontend comparten el mismo contrato:
+
+```csharp
+// C# — Models/Common/Response.cs
+public class Response<T>
+{
+    public bool Success { get; set; }
+    public string Message { get; set; }
+    public T Data { get; set; }
+}
+```
+
+```typescript
+// TypeScript — models/response-api.model.ts
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+```
+
+.NET serializa PascalCase como camelCase por defecto, asi que `Success` → `success`, `Data` → `data`.
+
+### Health Check
+
+El endpoint `GET /Health` esta disponible sin autenticacion y reporta:
+
+```json
+{
+  "status": "healthy",
+  "samlConfigured": true,
+  "keyVaultConfigured": true
+}
+```
+
+Usado por los smoke tests de CI/CD y para monitoreo.
+
+---
+
+## Configuracion del frontend (Angular)
+
+### Stack
+
+| Libreria | Uso |
+|----------|-----|
+| Angular 20+ (standalone) | Framework principal |
+| Bamboo ds-ng | Design System del Tec |
+| Angular Material | Snackbar, CDK |
+| RxJS | Programacion reactiva |
+
+### Environments (Type-Safe)
+
+Todos los environments implementan la interfaz `Environment`:
+
+```typescript
+// environments/environment.interface.ts
+export interface Environment {
+  production: boolean;
+  surveyUrl: string;
+  homeUrl: string;
+  apiBaseUrl: string;
+}
+```
+
+Si agregas una nueva propiedad a la interfaz, TypeScript te obliga a agregarla en los 3 archivos
+de environment. Esto evita errores de configuracion entre ambientes.
+
+### Rutas
+
+```typescript
+// app.routes.ts
+export const routes: Routes = [
+  // Ruta raiz: FederationComponent obtiene claims y redirige a /dashboard
+  { path: "", component: FederationComponent, pathMatch: "full" },
+
+  // Rutas protegidas por sesion
+  {
+    path: "",
+    component: LayoutComponent,
+    canActivate: [userSessionGuard],
+    children: [
+      // Agrega tus rutas aqui:
+      // { path: "dashboard", component: DashboardComponent },
+      // { path: "admin", canActivate: [roleGuard('Administrador')], children: [...] },
+    ],
+  },
+
+  // 404
+  { path: "**", component: NotFoundPageComponent },
+];
+```
+
+### Guards
+
+**`userSessionGuard`** — Verifica que exista sesion activa en sessionStorage.
+
+**`roleGuard(...roles)`** — Guard configurable por roles:
+
+```typescript
+// Una sola role
+canActivate: [roleGuard('Administrador')]
+
+// Multiples roles
+canActivate: [roleGuard('Administrador', 'Supervisor', 'Coordinador')]
+```
+
+### Interceptor HTTP
+
+El interceptor `tokenApiInterceptor` hace dos cosas:
+1. Agrega headers `Cache-Control: no-cache` a todas las peticiones
+2. Ante errores 401/403, intenta refrescar la sesion automaticamente
+
+### Flujo de sesion
+
+1. Angular arranca → `FederationComponent` llama `Home/GetUserClaims`
+2. El backend retorna los claims del usuario autenticado
+3. `SessionService.createSessionUser()` guarda en `sessionStorage`
+4. Redirige a `/dashboard`
+5. `SessionRefreshService` refresca claims cada 4 minutos en background
+6. Si el refresh falla, `sessionValid$` emite `false`
+
+---
+
+## Autenticacion SAML2
+
+### Flujo en produccion
+
+```
+Usuario → App → [Authorize] → No autenticado?
+  → Challenge SAML2 → Redirect a IdP (amfs.tec.mx)
+  → Login en IdP → POST AssertionConsumerService
+  → Claims disponibles en HttpContext.User
+  → FederationComponent obtiene claims via API
+  → Sesion Angular creada
+```
+
+### Claims disponibles
+
+Los claims se mapean desde `appsettings.json` > `ClaimMappings`:
+
+| Propiedad | Claim SAML (default) | Descripcion |
+|-----------|---------------------|-------------|
+| `PersonID` | `IDPersona` | ID unico de persona |
+| `UserType` | `TipoUsuario` | Tipo de usuario (Administrador, Colaborador, etc.) |
+| `PayrollID` | `nameidentifier` | Nomina |
+| `Email` | `NAM_upn` | Correo institucional |
+| `Profiles` | `perfiles` | Perfiles asignados |
+| `ITESMProfFuncionDesc` | `ITESMProfFuncionDesc` | Descripcion de funcion |
+| `ITESMProfFuncion` | `ITESMProfFuncion` | Codigo de funcion |
+
+Si un proyecto nuevo necesita claims diferentes, solo cambia los valores en `ClaimMappings`
+sin tocar codigo C#.
+
+### Flujo en desarrollo
+
+Cuando `Auth:BypassSaml = true`:
+- No se contacta al IdP
+- `DevAuthHandler` crea un `ClaimsPrincipal` con claims de `UserImpersonation`
+- `[Authorize]` pasa sin problema
+- Puedes simular diferentes tipos de usuario cambiando `UserType` en `appsettings.Development.json`
+
+---
+
+## Desarrollo local
+
+### Opcion A: Sin Docker (recomendado para desarrollo rapido)
+
+```bash
+# 1. Restaurar dependencias
+dotnet restore
+cd ClientApp && npm install --legacy-peer-deps && cd ..
+
+# 2. Ejecutar (backend + frontend)
+dotnet run
+
+# La app se abre en https://localhost:5001
+# Angular se sirve en http://localhost:4200 (proxied por ASP.NET)
+```
+
+### Opcion B: Con Docker
+
+```bash
+docker compose up --build
+# Backend: https://localhost:5011
+# Angular: http://localhost:4210
+```
+
+### Cambiar el usuario de prueba
+
+Edita `appsettings.Development.json`:
+
+```json
+{
+  "UserImpersonation": {
+    "PayrollID": "L12345678",
+    "PersonID": "12345678",
+    "Email": "otro.usuario@tec.mx",
+    "UserType": "Colaborador",
+    "Profiles": "Becario"
+  }
+}
+```
+
+Reinicia el backend para que tome los cambios.
+
+---
+
+## Docker
+
+### docker-compose.yml
+
+```yaml
+services:
+  {proyecto}_web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5011:5001"   # HTTPS backend
+      - "5010:5000"   # HTTP backend
+      - "4210:4200"   # Angular dev server
+    volumes:
+      - .:/app                          # Hot reload de codigo
+      - /app/ClientApp/node_modules     # Evita conflicto de node_modules
+      - /app/bin
+      - /app/ClientApp/.angular/cache
+```
+
+### Notas
+
+- El `Dockerfile.dev` instala .NET SDK 8, Node.js 20, y Angular CLI
+- Los volumenes permiten hot-reload tanto de C# (`dotnet watch`) como de Angular
+- La network se crea automaticamente para comunicacion entre servicios futuros
+
+---
+
+## Environments y configuracion por ambiente
+
+| Ambiente | Branch | Build Definition | Environment File | appsettings |
+|----------|--------|-----------------|------------------|-------------|
+| DEVL | `develop` | `BackOfficeDEVL` | `environment.ts` | `vars.DEVL_JSON` |
+| PPRD | `release` | `BackOfficePPRD` | `environment.pprd.ts` | `vars.PPRD_JSON` |
+| PROD | `main` | `BackOfficePROD` | `environment.prod.ts` | `vars.PROD_JSON` |
+
+### Variables de GitHub que necesitas configurar
+
+En **Settings > Variables** del repositorio:
+
+| Variable | Contenido |
+|----------|-----------|
+| `DEVL_JSON` | JSON completo de `appsettings.json` para DEVL |
+| `PPRD_JSON` | JSON completo de `appsettings.json` para PPRD |
+| `PROD_JSON` | JSON completo de `appsettings.json` para PROD |
+
+En **Settings > Secrets**:
+
+| Secret | Contenido |
+|--------|-----------|
+| `AZUREAPPSERVICE_PUBLISHPROFILE_DEVL` | Publish profile de la Azure Web App DEVL |
+| `AZUREAPPSERVICE_PUBLISHPROFILE_PPRD` | Publish profile de la Azure Web App PPRD |
+| `AZUREAPPSERVICE_PUBLISHPROFILE_PROD` | Publish profile de la Azure Web App PROD |
+
+---
+
+## CI/CD con GitHub Actions
+
+### Workflow reutilizable
+
+Los tres ambientes usan un solo workflow base (`deploy-reusable.yml`) que recibe parametros:
+
+```yaml
+# ci-cd-devl.yml (ejemplo simplificado)
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      environment-name: 'Development'
+      app-name: 'TU_APP_DEVL'
+      build-definition: 'BackOfficeDEVL'
+      settings-var: ${{ vars.DEVL_JSON }}
+    secrets:
+      publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DEVL }}
+```
+
+### Como configurar CI/CD en un proyecto nuevo
+
+1. Copia `github-workflow-templates/` a `.github/workflows/`
+2. En cada archivo `ci-cd-*.yml`, reemplaza `TU_APP_*` con el nombre real de tu Azure Web App
+3. Configura las variables y secrets en GitHub (ver tabla arriba)
+4. El deploy se ejecuta automaticamente al hacer push a la branch correspondiente
+
+### Smoke test
+
+El workflow de PPRD y PROD incluye un smoke test post-deploy que verifica el endpoint `/Health`.
+Si falla, el log del workflow mostrara el error.
+
+---
+
+## Azure Key Vault
+
+En ambientes publicados (no Development), la app lee secretos de Azure Key Vault automaticamente.
+
+### Secretos necesarios en Key Vault
+
+| Nombre del secreto | Descripcion |
+|--------------------|-------------|
+| `Saml2--SigningCertificate` | Certificado SAML en Base64 (.pfx) |
+| `Saml2--SigningCertificatePassword` | Password del certificado |
+| `ConnectionStrings--AzureSql` | Connection string de la BD (si aplica) |
+
+> Nota: Azure Key Vault usa `--` como separador, que .NET mapea a `:` en la configuracion.
+> Asi `Saml2--SigningCertificate` se lee como `Configuration["Saml2:SigningCertificate"]`.
+
+### Configuracion de acceso
+
+La app usa `DefaultAzureCredential`, que en Azure Web App resuelve via Managed Identity:
+
+1. En la Azure Web App, activa **System-assigned managed identity**
+2. En Key Vault > **Access policies**, agrega la identidad con permisos `Get` y `List` en Secrets
+
+---
+
+## Agregar nuevas funcionalidades
+
+### Agregar un nuevo componente/pagina
+
+```bash
+cd ClientApp
+ng generate component components/mi-pagina --standalone
+```
+
+Luego registrala en `app.routes.ts`:
+
+```typescript
+children: [
+  { path: "mi-pagina", component: MiPaginaComponent },
+],
+```
+
+### Agregar un nuevo controller API
+
+```bash
+# Crear archivo en Controllers/
+```
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+
+namespace TU_NAMESPACE.Controllers
+{
+    [ApiController]
+    [Route("[controller]/[action]")]
+    [Authorize]
+    [EnableCors("AllowedOrigins")]
+    public class MiController : ControllerBase
+    {
+        [HttpGet]
+        public Response<MiModelo> GetDatos()
+        {
+            // Tu logica aqui
+            return new Response<MiModelo>(datos);
+        }
+    }
+}
+```
+
+### Agregar un nuevo servicio Angular
+
+```bash
+cd ClientApp
+ng generate service services/mi-servicio
+```
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class MiServicioService {
+  private http = inject(HttpClient);
+
+  getDatos(): Observable<ApiResponse<MiModelo>> {
+    return this.http.get<ApiResponse<MiModelo>>('MiController/GetDatos');
+  }
+}
+```
+
+### Proteger una ruta por rol
+
+```typescript
+import { roleGuard } from './guard/admin.guard';
+
+// En app.routes.ts
+{
+  path: "admin",
+  canActivate: [roleGuard('Administrador', 'Supervisor')],
+  children: [
+    { path: "config", component: ConfigComponent },
+  ],
+}
+```
+
+---
+
+## Referencia de archivos clave
+
+| Archivo | Proposito | Cuando modificar |
+|---------|-----------|-----------------|
+| `Program.cs` | Entry point, middleware pipeline, servicios | Agregar servicios, cambiar orden de middleware |
+| `appsettings.json` | Config de produccion | URLs SAML, CORS, Key Vault, claims |
+| `appsettings.Development.json` | Config de desarrollo | Usuario de prueba, bypass auth |
+| `Common/AuthHelper.cs` | Mapeo de claims SAML | Si agregas claims nuevos a `ClaimMappings` |
+| `Common/DevAuthMiddleware.cs` | Auth fake + DevAuthHandler | Normalmente no se modifica |
+| `Models/Common/Response.cs` | Contrato de respuesta API | Si necesitas campos extra en la respuesta |
+| `app.routes.ts` | Rutas de Angular | Cada que agregues paginas |
+| `app.config.ts` | Providers de Angular | Si agregas interceptors o providers globales |
+| `environment.interface.ts` | Interfaz de environment | Si agregas config nueva por ambiente |
+| `init-project.sh` | Bootstrap de proyecto nuevo | No necesitas modificar |
+
+---
+
+## Troubleshooting
+
+### "Error al descargar metadata del IdP"
+
+- Verifica que la URL en `Saml2:IdPMetadata` sea accesible desde tu red
+- En desarrollo, esto no deberia pasar si `Auth:BypassSaml = true`
+
+### "401 Unauthorized" en desarrollo
+
+- Verifica que `appsettings.Development.json` tenga `"Auth": { "BypassSaml": true }`
+- Verifica que `UserImpersonation` tenga todos los campos
+
+### "CORS error" en el navegador
+
+- Verifica que `AllowedOrigins` en `appsettings.json` incluya la URL desde donde accedes
+- En desarrollo: `["https://localhost:5001"]`
+
+### Angular no compila
+
+- Ejecuta `npm install --legacy-peer-deps` (Bamboo ds-ng requiere `--legacy-peer-deps`)
+- Verifica que tengas Node.js 20+
+
+### Docker no arranca
+
+- Verifica que `.env` exista (copia de `.env.example`)
+- Verifica que los puertos 5011, 5010, 4210 no esten en uso
+
+### El script init-project.sh no funciona en Linux
+
+El script usa `sed -i ''` (macOS). En Linux usa `sed -i` sin comillas vacias.
+El script intenta ambas variantes automaticamente.
+
+---
+
+## Licencia
+
+Uso interno - Tecnologico de Monterrey.
+
+
+--------------------------------------------------------------------------------
+
+// Dockerfile.dev
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS secihti_web_dev
+
+# Instala Node.js y Angular CLI
+RUN apt-get update && \
+    apt-get install -y curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g @angular/cli
+
+# Crea carpeta de trabajo
+WORKDIR /app
+    
+COPY . .
+
+# Restaura dependencias de .NET y Angular
+RUN dotnet restore
+RUN npm install --prefix ClientApp
+
+# Abre bash por defecto (para uso interactivo manual)
+CMD [ "bash" ]
+
+
+--------------------------------------------------------------------------------
+
+# init-project.sh
+
+#!/bin/bash
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────────
+# init-project.sh — Inicializa un nuevo proyecto a partir
+# de la plantilla SAML2 + Angular + Bamboo.
+#
+# Uso:
+#   ./init-project.sh MiNuevoProyecto
+#
+# Esto reemplaza todos los nombres de la plantilla (SECIHTI,
+# Secihti, secihti) con las variantes del nombre dado.
+# También renombra el archivo .csproj.
+# ─────────────────────────────────────────────────────────
+
+if [ $# -lt 1 ]; then
+  echo "Uso: $0 <NombreProyecto>"
+  echo ""
+  echo "Ejemplo: $0 MiAppNueva"
+  echo ""
+  echo "El nombre se usa para:"
+  echo "  - Namespace C#:    NombreProyecto  (PascalCase tal como lo escribas)"
+  echo "  - package.json:    nombreproyecto  (lowercase)"
+  echo "  - Docker/logs:     nombreproyecto  (lowercase)"
+  echo "  - SAML issuer:     nombreproyecto.tec.mx"
+  exit 1
+fi
+
+PROJECT_NAME="$1"
+# PascalCase tal como lo pasó el usuario (para namespaces C#)
+PASCAL_CASE="$PROJECT_NAME"
+# lowercase para docker, package.json, URLs
+LOWER_CASE=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
+
+echo "╔══════════════════════════════════════════════╗"
+echo "║  Inicializando proyecto: $PASCAL_CASE"
+echo "╠══════════════════════════════════════════════╣"
+echo "║  Namespace C#:  $PASCAL_CASE"
+echo "║  Lowercase:     $LOWER_CASE"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Archivos a procesar (excluyendo .git, node_modules, bin, obj, dist, y este script)
+FILES_TO_PROCESS=$(find "$SCRIPT_DIR" \
+  -type f \
+  ! -path '*/.git/*' \
+  ! -path '*/node_modules/*' \
+  ! -path '*/bin/*' \
+  ! -path '*/obj/*' \
+  ! -path '*/dist/*' \
+  ! -path '*/.angular/*' \
+  ! -name 'init-project.sh' \
+  ! -name 'package-lock.json' \
+  ! -name '*.png' \
+  ! -name '*.ico' \
+  ! -name '*.ttf' \
+  ! -name '*.svg' \
+  ! -name '*.woff' \
+  ! -name '*.woff2' \
+  \( -name '*.cs' -o -name '*.csproj' -o -name '*.json' -o -name '*.ts' -o -name '*.html' -o -name '*.yml' -o -name '*.yaml' -o -name '*.md' -o -name '*.css' -o -name '*.scss' -o -name 'Dockerfile*' -o -name '.env*' \))
+
+REPLACED=0
+
+for file in $FILES_TO_PROCESS; do
+  if grep -q -E 'SECIHTI|Secihti|secihti' "$file" 2>/dev/null; then
+    # SECIHTI (uppercase namespace) → PASCAL_CASE (uppercase)
+    sed -i '' "s/SECIHTI/${PASCAL_CASE}/g" "$file" 2>/dev/null || sed -i "s/SECIHTI/${PASCAL_CASE}/g" "$file"
+    # Secihti (PascalCase) → PASCAL_CASE
+    sed -i '' "s/Secihti/${PASCAL_CASE}/g" "$file" 2>/dev/null || sed -i "s/Secihti/${PASCAL_CASE}/g" "$file"
+    # secihti (lowercase) → LOWER_CASE
+    sed -i '' "s/secihti/${LOWER_CASE}/g" "$file" 2>/dev/null || sed -i "s/secihti/${LOWER_CASE}/g" "$file"
+    REPLACED=$((REPLACED + 1))
+    echo "  ✓ $file"
+  fi
+done
+
+# Actualizar el title en index.html
+if [ -f "$SCRIPT_DIR/ClientApp/src/index.html" ]; then
+  sed -i '' "s/<title>TEMPLATE<\/title>/<title>${PASCAL_CASE}<\/title>/g" "$SCRIPT_DIR/ClientApp/src/index.html" 2>/dev/null || \
+  sed -i "s/<title>TEMPLATE<\/title>/<title>${PASCAL_CASE}<\/title>/g" "$SCRIPT_DIR/ClientApp/src/index.html"
+  echo "  ✓ ClientApp/src/index.html (title)"
+fi
+
+# Actualizar nombre del proyecto en angular.json
+if [ -f "$SCRIPT_DIR/ClientApp/angular.json" ]; then
+  sed -i '' "s/\"TEMPLATE\"/\"${LOWER_CASE}\"/g" "$SCRIPT_DIR/ClientApp/angular.json" 2>/dev/null || \
+  sed -i "s/\"TEMPLATE\"/\"${LOWER_CASE}\"/g" "$SCRIPT_DIR/ClientApp/angular.json"
+  # También reemplazar en buildTarget references como "TEMPLATE:build"
+  sed -i '' "s/TEMPLATE:/${LOWER_CASE}:/g" "$SCRIPT_DIR/ClientApp/angular.json" 2>/dev/null || \
+  sed -i "s/TEMPLATE:/${LOWER_CASE}:/g" "$SCRIPT_DIR/ClientApp/angular.json"
+  echo "  ✓ ClientApp/angular.json (project name)"
+fi
+
+# Renombrar el archivo .csproj
+OLD_CSPROJ="$SCRIPT_DIR/Secihti.csproj"
+NEW_CSPROJ="$SCRIPT_DIR/${PASCAL_CASE}.csproj"
+if [ -f "$OLD_CSPROJ" ] && [ "$OLD_CSPROJ" != "$NEW_CSPROJ" ]; then
+  mv "$OLD_CSPROJ" "$NEW_CSPROJ"
+  echo "  ✓ Secihti.csproj → ${PASCAL_CASE}.csproj"
+fi
+
+# Limpiar archivos de la plantilla
+rm -f "$SCRIPT_DIR/templateSAML2.txt" 2>/dev/null || true
+rm -f "$SCRIPT_DIR/scan_project.py" 2>/dev/null || true
+
+echo ""
+echo "═══════════════════════════════════════════════"
+echo "  ✅ Proyecto '$PASCAL_CASE' inicializado."
+echo "  Archivos actualizados: $REPLACED"
+echo ""
+echo "  Próximos pasos:"
+echo "  1. Actualiza appsettings.json con tus URLs SAML y Key Vault"
+echo "  2. Actualiza los environments de Angular"
+echo "  3. Actualiza los workflows de CI/CD"
+echo "  4. cd ClientApp && npm install --legacy-peer-deps"
+echo "  5. dotnet restore && dotnet run"
+echo "═══════════════════════════════════════════════"
+
+
+--------------------------------------------------------------------------------
+
+// Secihti.csproj
+
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- ────────────────────────────────
+       Propiedades básicas del proyecto
+       ──────────────────────────────── -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- La app Angular se encuentra en ClientApp -->
+    <SpaRoot>ClientApp\</SpaRoot>
+
+    <!-- Evita que el compilador TypeScript de MSBuild interfiera -->
+    <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+    <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
+
+    <IsPackable>false</IsPackable>
+
+    <!-- Excluye node_modules de la vista y del publish -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
+
+    <!-- Si algún día activas prerenderizado server-side -->
+    <BuildServerSideRenderer>false</BuildServerSideRenderer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.4.0" />
+    <PackageReference Include="Azure.Identity" Version="1.13.2" />
+    <PackageReference Include="ITfoxtec.Identity.Saml2" Version="4.11.3" />
+    <PackageReference Include="ITfoxtec.Identity.Saml2.MvcCore" Version="4.11.3" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.7" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.72.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <!-- Don't publish the SPA source files, but do show them in the project files list -->
+    <Content Remove="$(SpaRoot)**" />
+    <None Remove="$(SpaRoot)**" />
+    <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**" />
+  </ItemGroup>
+
+
+  <!-- Logs de ejemplo en Debug -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <None Update="Logs\info.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- ────────────────────────────────
+       Restore de npm en Debug local
+       ──────────────────────────────── -->
+
+  <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
+    <!-- Ensure Node.js is installed -->
+    <Exec Command="node --version" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
+    </Exec>
+    <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
+    <Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm install --legacy-peer-deps" />
+  </Target>
+
+  <!-- ────────────────────────────────
+       Build de Angular al hacer publish
+       ──────────────────────────────── -->
+  <Target Name="PublishRunWebpack" AfterTargets="ComputeFilesToPublish">
+    <!-- 1. npm install siempre -->
+   <Exec WorkingDirectory="$(SpaRoot)" Command="npm install --legacy-peer-deps " />
+
+    <!-- 2. Compila según el entorno elegido -->
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PROD" Condition=" '$(Build_DefinitionName)' == 'BackOfficePROD'"/>   
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PPRD" Condition="'$(Build_DefinitionName)' == 'BackOfficePPRD'"/>
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:DEVL" Condition="'$(Build_DefinitionName)' == 'BackOfficeDEVL'"/>
+
+    <!-- 3. (Opcional) build para SSR -->
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
+
+      <!-- Include the newly-built files in the publish output -->
+    <ItemGroup>
+      <DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
+      <DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
+      <ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>%(DistFiles.Identity)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+</Project>
+
+
+--------------------------------------------------------------------------------
+
+** .\Logs\secihti-20260407.txt **
+
+2026-04-07 10:10:51.837 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:10:51.870 +00:00 [WRN] No XML encryptor configured. Key {ffa0b1b1-e5f2-43bb-a926-541fa5826a92} may be persisted to storage in unencrypted form.
+2026-04-07 10:10:51.878 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:10:51.895 +00:00 [WRN] The WebRootPath was not found: /app/wwwroot. Static files may be unavailable.
+2026-04-07 10:10:52.035 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:10:54.272 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:10:54.272 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:10:54.290 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+2026-04-07 10:13:16.655 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:13:16.705 +00:00 [WRN] No XML encryptor configured. Key {545c30b4-4fd9-4145-983a-3f614e6017b3} may be persisted to storage in unencrypted form.
+2026-04-07 10:13:16.715 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:13:16.735 +00:00 [WRN] The WebRootPath was not found: /app/wwwroot. Static files may be unavailable.
+2026-04-07 10:13:16.916 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:13:19.434 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:13:19.434 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:13:19.452 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+2026-04-07 10:19:39.335 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:19:39.374 +00:00 [WRN] No XML encryptor configured. Key {ee6be70a-ba6f-4a4f-909a-fc3a9fc76115} may be persisted to storage in unencrypted form.
+2026-04-07 10:19:39.384 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:19:39.581 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:19:42.184 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:19:42.184 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:19:42.201 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+2026-04-07 10:24:56.948 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:24:56.985 +00:00 [WRN] No XML encryptor configured. Key {adeb7099-5ef5-4229-8851-a5b45627daee} may be persisted to storage in unencrypted form.
+2026-04-07 10:24:56.995 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:24:57.156 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:24:59.866 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:24:59.867 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:24:59.885 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+2026-04-07 10:32:53.987 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:32:54.033 +00:00 [WRN] No XML encryptor configured. Key {250c176d-1713-45e6-8efd-c971990ae7f7} may be persisted to storage in unencrypted form.
+2026-04-07 10:32:54.043 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:32:54.211 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:32:57.761 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:32:57.761 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:32:57.779 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+2026-04-07 10:36:30.158 +00:00 [WRN] Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-04-07 10:36:30.203 +00:00 [WRN] No XML encryptor configured. Key {9e364792-d510-4ece-8ada-e2c84ec52b0f} may be persisted to storage in unencrypted form.
+2026-04-07 10:36:30.214 +00:00 [WRN] Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'https://0.0.0.0:5001;http://0.0.0.0:5000'.
+2026-04-07 10:36:30.394 +00:00 [WRN] The ASP.NET Core developer certificate is not trusted. For information about trusting the ASP.NET Core developer certificate, see https://aka.ms/aspnet/https-trust-dev-cert.
+2026-04-07 10:36:34.230 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:36:34.230 +00:00 [ERR] You or a plugin you are using have set `optimizeDeps.esbuildOptions` but this option is now deprecated. Vite now uses Rolldown to optimize the dependencies. Please use `optimizeDeps.rolldownOptions` instead.
+
+2026-04-07 10:36:34.247 +00:00 [ERR] `esbuild` option is set to false, but `oxc` option was not set to false. `esbuild: false` does not have effect any more. If you want to disable the default transformation, which is now handled by Oxc, please set `oxc: false` instead.
+
+
+--------------------------------------------------------------------------------
+
+# docker-compose.yml
+
+services:
+  secihti_web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: secihti_web_dev
+    container_name: secihti_web
+    env_file:
+      - .env
+    ports:
+      - "5011:5001"
+      - "5010:5000"
+      - "4210:4200"
+    volumes:
+      - .:/app
+      - /app/ClientApp/node_modules
+      - /app/bin
+      - /app/ClientApp/.angular/cache
+    working_dir: /app
+    command: bash -c "dotnet dev-certs https  && dotnet watch run"
+    stdin_open: true
+    tty: true
+    networks:
+      - secihti_net
+
+networks:
+  secihti_net:
+    name: secihti_net
+
+
+--------------------------------------------------------------------------------
+
+// appsettings.Development.json
+
+{
+  "Auth": {
+    "BypassSaml": true
+  },
+  "AllowedOrigins": ["https://localhost:5001", "https://localhost:5011"],
+  "ConnectionStrings": {
+    "AzureSql": "Server=tcp:YOUR-LOCAL-DB;Persist Security Info=False;User ID=sa;Password=tu_password_local;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning"
+      }
+    }
+  },
+    "UserImpersonation": {
+    "PayrollID": "L00000000",
+    "PersonID": "00000000",
+    "Email": "maribel.pereyra@tec.mx",
+    "UserType": "Administrador",
+    "Profiles": "Colaborador"
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// .env.example
+
+# ===============================
+# ASP.NET Core Environment
+# ===============================
+ASPNETCORE_ENVIRONMENT=Development
+
+# ===============================
+# Azure Key Vault URL
+# ===============================
+KeyVaultUri=https://YOUR_KEYVAULT_NAME.vault.azure.net/
+
+# ===============================
+# SAML2 Configurations (Mocking Key Vault for Local Dev)
+# ===============================
+Saml2__SigningCertificate=/K1SLk...[MOCK_CERTIFICATE_HERE]...
+Saml2__SigningCertificatePassword=YOUR_CERT_PASSWORD
+
+# ===============================
+# API Connection / Database Strings (Without Business Logic)
+# ===============================
+ConnectionApi__ClientSecret=YOUR_API_SECRET
+ConnectionApi__Url=https://YOUR_API_URL.azurewebsites.net
+
+
+--------------------------------------------------------------------------------
+
+// Program.cs
+
+using System.Diagnostics;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+using System.ServiceModel.Security;
+using Azure.Identity;
+using ITfoxtec.Identity.Saml2;
+using ITfoxtec.Identity.Saml2.MvcCore.Configuration;
+using ITfoxtec.Identity.Saml2.Schemas;
+using ITfoxtec.Identity.Saml2.Schemas.Metadata;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.SpaServices.AngularCli;
+using Microsoft.IdentityModel.Logging;
+using SECIHTI.Common;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
+var services = builder.Services;
+
+// ── Azure Key Vault ──
+if (!builder.Environment.IsDevelopment())
+{
+    var keyVaultUri = configuration["KeyVaultUri"];
+    if (!string.IsNullOrEmpty(keyVaultUri))
+    {
+        configuration.AddAzureKeyVault(new Uri(keyVaultUri), new DefaultAzureCredential());
+    }
+}
+
+// ── Serilog ──
+Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
+builder.Host.UseSerilog();
+Serilog.Debugging.SelfLog.Enable(msg =>
+{
+    Debug.Print(msg);
+    Debugger.Break();
+});
+
+// ── Services ──
+var bypassSaml = configuration.GetValue<bool>("Auth:BypassSaml");
+
+services.AddHttpClient();
+
+if (!bypassSaml)
+{
+    services.Configure<Saml2Configuration>(configuration.GetSection("Saml2"));
+    services.AddOptions<Saml2Configuration>().Configure<IHttpClientFactory>((saml2Config, httpClientFactory) =>
+    {
+        try
+        {
+            saml2Config.Issuer = configuration["Saml2:Issuer"];
+            saml2Config.SingleSignOnDestination = new Uri(configuration["Saml2:SingleSignOnDestination"]!);
+            saml2Config.SingleLogoutDestination = new Uri(configuration["Saml2:SingleLogoutDestination"]!);
+            saml2Config.SignatureAlgorithm = configuration["Saml2:SignatureAlgorithm"];
+            saml2Config.SignAuthnRequest = Convert.ToBoolean(configuration["Saml2:SignAuthnRequest"]);
+            saml2Config.SigningCertificate = new X509Certificate2(
+                Convert.FromBase64String(configuration["Saml2:SigningCertificate"]!),
+                configuration["Saml2:SigningCertificatePassword"],
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet
+            );
+            saml2Config.CertificateValidationMode = Enum.Parse<X509CertificateValidationMode>(configuration["Saml2:CertificateValidationMode"]!);
+            saml2Config.RevocationMode = Enum.Parse<X509RevocationMode>(configuration["Saml2:RevocationMode"]!);
+            saml2Config.AllowedAudienceUris.Add(saml2Config.Issuer);
+
+            var entityDescriptor = new EntityDescriptor();
+            entityDescriptor.ReadIdPSsoDescriptorFromUrlAsync(httpClientFactory, new Uri(configuration["Saml2:IdPMetadata"]!)).GetAwaiter().GetResult();
+
+            if (entityDescriptor.IdPSsoDescriptor != null)
+            {
+                saml2Config.SingleSignOnDestination = entityDescriptor.IdPSsoDescriptor.SingleSignOnServices.First().Location;
+                saml2Config.SingleLogoutDestination = entityDescriptor.IdPSsoDescriptor.SingleLogoutServices.First().Location;
+                saml2Config.SignatureValidationCertificates.AddRange(entityDescriptor.IdPSsoDescriptor.SigningCertificates);
+            }
+            else
+            {
+                throw new Exception("No se cargo el IdPSsoDescriptor del metadata");
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, e.Message);
+            throw;
+        }
+    });
+
+    services.AddSaml2(slidingExpiration: true);
+}
+else
+{
+    services.AddAuthentication("DevAuth")
+        .AddScheme<AuthenticationSchemeOptions, DevAuthHandler>("DevAuth", null);
+}
+
+services.AddHttpContextAccessor();
+services.AddControllersWithViews();
+
+services.AddDistributedMemoryCache();
+services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+services.AddCors(options =>
+{
+    options.AddPolicy("AllowedOrigins", policy =>
+    {
+        policy.WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>()!);
+        policy.AllowCredentials();
+        policy.AllowAnyMethod();
+        policy.AllowAnyHeader();
+    });
+});
+
+services.AddSpaStaticFiles(config =>
+{
+    config.RootPath = "ClientApp/dist/browser";
+});
+
+// ── App ──
+var app = builder.Build();
+
+IdentityModelEventSource.ShowPII = true;
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+if (!app.Environment.IsDevelopment())
+    app.UseSpaStaticFiles();
+
+app.UseRouting();
+app.UseSession();
+app.UseAuthentication();
+
+if (!bypassSaml)
+{
+    app.UseSaml2();
+    app.MapWhen(
+        context => !(context.User.Identity?.IsAuthenticated ?? false)
+                   && (context.Request.Path.Value?.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) ?? false),
+        config =>
+        {
+            config.Run(async context =>
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                await Task.CompletedTask;
+            });
+        }
+    );
+}
+
+app.UseAuthorization();
+app.UseCors("AllowedOrigins");
+
+app.MapControllers();
+
+if (!bypassSaml)
+{
+    app.Use(async (context, next) =>
+    {
+        if (!(context.User.Identity?.IsAuthenticated ?? false))
+        {
+            await context.ChallengeAsync(Saml2Constants.AuthenticationScheme);
+        }
+        else
+        {
+            await next();
+        }
+    });
+}
+
+app.MapWhen(
+    context =>
+    {
+        var path = context.Request.Path;
+        // Don't serve SPA for API controller routes
+        return !path.StartsWithSegments("/Home")
+            && !path.StartsWithSegments("/Health");
+    },
+    spaApp =>
+    {
+        spaApp.UseSpa(spa =>
+        {
+            spa.Options.StartupTimeout = TimeSpan.FromMinutes(3);
+            spa.Options.SourcePath = "ClientApp";
+
+            if (app.Environment.IsDevelopment())
+                spa.UseAngularCliServer(npmScript: "start");
+        });
+    }
+);
+
+app.Run();
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/aspnetcore-adapter.js
+
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Extract the port from command line arguments
+const args = process.argv.slice(2);
+const portArgIndex = args.indexOf('--port');
+let port = portArgIndex !== -1 ? args[portArgIndex + 1] : '4200';
+
+console.log(`Starting Angular dev server adapter on port ${port}...`);
+
+const ng = process.platform === 'win32' ? 'ng.cmd' : 'ng';
+
+// MODIFICACIÓN 1: Agregamos --poll=1000 forzosamente para Docker
+// y nos aseguramos de que escuche en todas las interfaces si fuera necesario (aunque el proxy de .net maneja localhost)
+const child = spawn(ng, ['serve', '--poll=1000', ...args], {
+  stdio: ['inherit', 'pipe', 'pipe'],
+  shell: true
+});
+
+// MODIFICACIÓN 2: .NET Core Middleware espera específicamente esta cadena
+// "open your browser on http://localhost:[port]"
+const magicString = `open your browser on http://localhost:${port}`;
+
+child.stdout.on('data', (data) => {
+  const output = data.toString();
+  process.stdout.write(output);
+
+  // Detectamos el nuevo output de Angular 17+ (Vite/Esbuild)
+  // Ejemplo: ➜  Local:   http://localhost:46699/
+  if (output.includes('Local:') && output.includes(`http://localhost:${port}`)) {
+    console.log(magicString);
+  }
+});
+
+child.stderr.on('data', (data) => {
+  process.stderr.write(data.toString());
+});
+
+child.on('close', (code) => {
+  process.exit(code);
+});
+
+
+--------------------------------------------------------------------------------
+
+** ClientApp/README.md **
+
+# ClientApp — Angular Frontend
+
+Angular standalone app con [Bamboo Design System (ds-ng)](https://www.npmjs.com/package/@ti-tecnologico-de-monterrey-oficial/ds-ng).
+
+## Desarrollo local
+
+```bash
+npm install --legacy-peer-deps
+npm start
+```
+
+La app se sirve en `http://localhost:4200/` y se recarga automáticamente con cambios.
+
+## Build por ambiente
+
+```bash
+npm run build:DEVL   # Development
+npm run build:PPRD   # Pre-produccion
+npm run build:PROD   # Produccion
+```
+
+Los artefactos se generan en `dist/browser/`.
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/ngserve.cmd
+
+@echo ** Angular Live Development Server is listening on localhost:%~2, open your browser on http://localhost:%~2/ **
+ng serve %1 %~2
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/angular.json
+
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "TEMPLATE": {
+      "root": "",
+      "sourceRoot": "src",
+      "projectType": "application",
+      "prefix": "app",
+      "schematics": {
+        "@schematics/angular:component": {
+          "standalone": true,
+          "skipTests": true
+        }
+      },
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:application",
+          "options": {
+            "progress": true,
+            "outputPath": {
+              "base": "dist"
+            },
+            "index": "src/index.html",
+            "polyfills": ["src/polyfills.ts"],
+            "tsConfig": "src/tsconfig.app.json",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "./node_modules/@ti-tecnologico-de-monterrey-oficial/ds-ng/assets/fonts/",
+                "output": "/assets/fonts/"
+              },
+              {
+                "glob": "**/*",
+                "input": "./node_modules/@ti-tecnologico-de-monterrey-oficial/ds-ng/assets/images/",
+                "output": "/assets/images/"
+              },
+              {
+                "glob": "**/*",
+                "input": "./node_modules/@ti-tecnologico-de-monterrey-oficial/ds-ng/assets/svg/",
+                "output": "/assets/svg/"
+              },
+              {
+                "glob": "**/*.svg",
+                "input": "node_modules/@material-symbols/svg-400/rounded/",
+                "output": "/assets/icons/material-rounded/"
+              }
+            ],
+            "styles": [
+              "src/styles.scss",
+              "node_modules/@ti-tecnologico-de-monterrey-oficial/ds-ng/assets/styles/mainTEC.min.css"
+            ],
+            "scripts": [],
+            "extractLicenses": false,
+            "sourceMap": true,
+            "optimization": false,
+            "namedChunks": true,
+            "allowedCommonJsDependencies": ["powerbi-client"],
+            "browser": "src/main.ts"
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "6kb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "namedChunks": false,
+              "extractLicenses": true
+            },
+            "development": {
+              "optimization": false,
+              "sourceMap": true,
+              "namedChunks": true,
+              "extractLicenses": false,
+              "outputHashing": "all"
+            },
+            "preproduction": {
+              "optimization": true,
+              "sourceMap": false,
+              "namedChunks": false,
+              "extractLicenses": true,
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.pprd.ts"
+                }
+              ]
+            }
+          },
+          "defaultConfiguration": ""
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "buildTarget": "TEMPLATE:build"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "TEMPLATE:build:production"
+            }
+          }
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "buildTarget": "TEMPLATE:build"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+          }
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": false
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
+    }
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/package.json
+
+{
+  "name": "secihti",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "node aspnetcore-adapter.js",
+    "build:DEVL": "ng build --configuration=development",
+    "build:PPRD": "ng build --configuration=preproduction",
+    "build:PROD": "ng build --configuration=production",
+    "build:ssr": "ng run secihti:server:dev",
+    "test": "ng test",
+    "lint": "ng lint",
+    "e2e": "ng e2e"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular-devkit/build-angular": "^20.3.16",
+    "@angular/animations": "^20.3.16",
+    "@angular/cdk": "^20.2.14",
+    "@angular/common": "^20.3.16",
+    "@angular/compiler": "^20.3.16",
+    "@angular/core": "^20.3.16",
+    "@angular/forms": "^20.3.16",
+    "@angular/localize": "^20.3.16",
+    "@angular/material": "^20.2.14",
+    "@angular/platform-browser": "^20.3.16",
+    "@angular/platform-browser-dynamic": "^20.3.16",
+    "@angular/router": "^20.3.16",
+    "@ti-tecnologico-de-monterrey-oficial/ds-ng": "^1.6.120-a",
+    "material-symbols": "^0.40.2",
+    "powerbi-client": "^2.23.9",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "^0.15.1"
+  },
+  "devDependencies": {
+    "@angular-eslint/builder": "^20.0.0",
+    "@angular-eslint/eslint-plugin": "^20.0.0",
+    "@angular-eslint/eslint-plugin-template": "^20.0.0",
+    "@angular-eslint/schematics": "^20.0.0",
+    "@angular-eslint/template-parser": "^20.0.0",
+    "@angular/cli": "^20.3.16",
+    "@angular/compiler-cli": "^20.3.16",
+    "@eslint/js": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "angular-eslint": "^20.0.0",
+    "eslint": "^9.20.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.24.0"
+  },
+  "overrides": {
+    "typescript": "$typescript",
+    "ajv": "^8.18.0",
+    "vite": "^8.0.0",
+    "dompurify": "^3.2.4",
+    "eslint": {
+      "ajv": "^6.12.6"
+    },
+    "@eslint/eslintrc": {
+      "ajv": "^6.12.6"
+    }
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/tsconfig.json
+
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "module": "ES2022",
+    "esModuleInterop": true,
+    "outDir": "./dist/out-tsc",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "experimentalDecorators": true,
+    "target": "ES2022",
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "lib": [
+      "ES2022",
+      "dom"
+    ],
+    "useDefineForClassFields": false
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/eslint.config.js
+
+// @ts-check
+const eslint = require("@eslint/js");
+const tseslint = require("typescript-eslint");
+const angular = require("angular-eslint");
+
+module.exports = tseslint.config(
+  {
+    ignores: ["src/component-examples/**"]
+  },
+  {
+    files: ["**/*.ts"],
+    extends: [
+      eslint.configs.recommended,
+      ...tseslint.configs.recommended,
+      ...tseslint.configs.stylistic,
+      ...angular.configs.tsRecommended,
+    ],
+    processor: angular.processInlineTemplates,
+    rules: {
+      "@angular-eslint/directive-selector": [
+        "error",
+        {
+          type: "attribute",
+          prefix: "app",
+          style: "camelCase",
+        },
+      ],
+      "@angular-eslint/component-selector": [
+        "error",
+        {
+          type: "element",
+          prefix: "app",
+          style: "kebab-case",
+        },
+      ],
+    },
+  },
+  {
+    files: ["**/*.html"],
+    extends: [
+      ...angular.configs.templateRecommended,
+      ...angular.configs.templateAccessibility,
+    ],
+    rules: {},
+  }
+);
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/.browserslistrc
+
+# This file is currently used by autoprefixer to adjust CSS to support the below specified browsers
+# For additional information regarding the format and rule options, please see:
+# https://github.com/browserslist/browserslist#queries
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Edge major versions
+last 2 Safari major versions
+last 2 iOS major versions
+Firefox ESR
+not IE 11 # Angular supports IE 11 only as an opt-in. To opt-in, remove the 'not' prefix on this line.
+
+
+--------------------------------------------------------------------------------
+
+<!-- ClientApp/src/index.html -->
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>TEMPLATE</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/main.ts
+
+import { bootstrapApplication } from "@angular/platform-browser";
+import { appConfig } from "./app/app.config";
+import { AppComponent } from "./app/app.component";
+import { environment } from "./environments/environment";
+import { enableProdMode } from "@angular/core";
+
+if (environment.production) {
+  enableProdMode();
+}
+
+// Parche temporal para ocultar advertencias de deprecación (NG0955 / allowSignalWrites)
+// que provienen de la directiva @ti-tecnologico-de-monterrey-oficial/ds-ng (Bamboo UI)
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('The \'allowSignalWrites\' flag is deprecated')
+  ) {
+    return; // Silenciamos esta advertencia específica de Bamboo Server
+  }
+  originalWarn.apply(console, args);
+};
+
+bootstrapApplication(AppComponent, appConfig).catch((err) =>
+  console.error(err),
+);
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/tsconfig.app.json
+
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/app",
+    "types": []
+  },
+  "files": ["main.ts", "polyfills.ts"],
+  "include": ["src/**/*.d.ts"]
+}
+
+
+--------------------------------------------------------------------------------
+
+/* ClientApp/src/styles.scss */
+
+
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/polyfills.ts
+
+import "@angular/localize/init";
+import "zone.js";
+
+(window as unknown as Record<string, unknown>)["global"] = window;
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/tsconfig.spec.json
+
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/spec",
+    "types": [
+      "jasmine",
+      "node"
+    ]
+  },
+  "files": [
+    "test.ts",
+    "polyfills.ts"
+  ],
+  "include": [
+    "**/*.spec.ts",
+    "**/*.d.ts"
+  ]
+}
+
+
+--------------------------------------------------------------------------------
+
+<!-- ClientApp/src/app/app.component.html -->
+
+<bmb-theme
+  [initialTheme]="'dark'"
+  [showControls]="false"
+  [leftText]="''"
+  [rightText]="''"
+>
+  <router-outlet></router-outlet>
+</bmb-theme>
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/app.routes.ts
+
+import { Routes } from "@angular/router";
+import { FederationComponent } from "./components/federation/federation.component";
+import { LayoutComponent } from "./components/layout/layout.component";
+import { NotFoundPageComponent } from "./components/not-found-page/not-found-page.component";
+import { userSessionGuard } from "./guard/user-session.guard";
+
+export const routes: Routes = [
+  { path: "", component: FederationComponent, pathMatch: "full" },
+  {
+    path: "",
+    component: LayoutComponent,
+    canActivate: [userSessionGuard],
+    children: [ 
+    ],
+  },
+  {
+    path: "**",
+    component: NotFoundPageComponent,
+  },
+];
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/app.component.ts
+
+import { ChangeDetectionStrategy, Component } from "@angular/core";
+import { RouterOutlet } from "@angular/router";
+import { BmbThemeComponent } from "@ti-tecnologico-de-monterrey-oficial/ds-ng";
+
+@Component({
+  selector: "app-root",
+  standalone: true,
+  templateUrl: "./app.component.html",
+  imports: [RouterOutlet, BmbThemeComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class AppComponent {
+  title = "app";
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/app.config.ts
+
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { PreloadAllModules, provideRouter, withPreloading } from '@angular/router';
+import { routes } from './app.routes';
+import { tokenApiInterceptor } from './interceptor/token-api.interceptor';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes, withPreloading(PreloadAllModules)),
+    provideHttpClient(withInterceptors([tokenApiInterceptor])),
+    provideAnimations(),
+  ],
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/models/user-claims.model.ts
+
+export class UserClaims {
+    personID: string;
+    userType: string;
+    payrollID: string;
+    email: string;
+    profiles: string;
+    itesmProfFuncionDesc: string;
+    itesmProfFuncion: string;
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/models/response-api.model.ts
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+
+--------------------------------------------------------------------------------
+
+<!-- ClientApp/src/app/components/not-found-page/not-found-page.component.html -->
+
+<div
+  style="
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    text-align: center;
+    padding: 24px;
+  "
+>
+  <h1 class="bmb_text-display-large">404</h1>
+  <h2 class="bmb_text-title-large" style="margin-top: 16px">
+    Página no encontrada
+  </h2>
+  <p class="bmb_text-body-large" style="margin-top: 8px">
+    Lo sentimos, pero la página que estás buscando no existe.
+  </p>
+  <a routerLink="/" bmbButton appearance="primary" style="margin-top: 24px"
+    >Volver a la página principal</a
+  >
+</div>
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/components/not-found-page/not-found-page.component.ts
+
+import { Component } from "@angular/core";
+import { RouterModule } from "@angular/router";
+import { BmbButtonDirective } from "@ti-tecnologico-de-monterrey-oficial/ds-ng";
+
+@Component({
+  selector: "app-not-found-page",
+  templateUrl: "./not-found-page.component.html",
+  styleUrl: "./not-found-page.component.css",
+  imports: [RouterModule, BmbButtonDirective],
+})
+export class NotFoundPageComponent {}
+
+
+--------------------------------------------------------------------------------
+
+/* ClientApp/src/app/components/not-found-page/not-found-page.component.css */
+
+
+
+
+--------------------------------------------------------------------------------
+
+/* ClientApp/src/app/components/layout/layout.component.css */
+
+
+
+
+--------------------------------------------------------------------------------
+
+<!-- ClientApp/src/app/components/layout/layout.component.html -->
+
+<bmb-container [appearance]="'contrast-box-container'">
+  <router-outlet></router-outlet>
+  <!-- <bmb-sidebar [elements]="sidebarElements" /> -->
+</bmb-container>
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/components/layout/layout.component.ts
+
+import { ChangeDetectionStrategy, Component } from "@angular/core";
+import { RouterModule } from "@angular/router";
+import {
+  BmbContainerComponent,
+  SidebarElement,
+} from "@ti-tecnologico-de-monterrey-oficial/ds-ng";
+
+@Component({
+  selector: "app-layout",
+  standalone: true,
+  templateUrl: "./layout.component.html",
+  styleUrl: "./layout.component.css",
+  imports: [
+    RouterModule,
+    BmbContainerComponent,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class LayoutComponent {
+  sidebarElements: SidebarElement[][] = [
+    [
+      { id: 1, icon: "dashboard", title: "Dashboard", link: "/dashboard" },
+      { id: 2, icon: "person", title: "Becarios", link: "/becarios" },
+      { id: 3, icon: "search", title: "Auditoría", link: "/auditoria" },
+      { id: 4, icon: "settings", title: "Admin", link: "/admin/estatus" },
+    ],
+  ];
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/components/federation/federation.component.ts
+
+import { CommonModule } from "@angular/common";
+import { Component, inject } from "@angular/core";
+import { Router } from "@angular/router";
+import { BmbLoaderComponent } from "@ti-tecnologico-de-monterrey-oficial/ds-ng";
+import { ApiResponse } from "../../models/response-api.model";
+import { UserClaims } from "../../models/user-claims.model";
+import { NotificationSnackbarService } from "../../services/notification-snackbar.service";
+import { SessionService } from "../../services/session.service";
+
+@Component({
+  selector: "app-federation",
+  templateUrl: "./federation.component.html",
+  styleUrl: "./federation.component.css",
+  imports: [CommonModule, BmbLoaderComponent],
+})
+export class FederationComponent {
+  private sessionService = inject(SessionService);
+  private notification = inject(NotificationSnackbarService);
+  private router: Router = inject(Router);
+
+  constructor() {
+    // Se obtiene los userclaims y el jwt del api
+    this.sessionService
+      .getSessionUser()
+      .subscribe((response: ApiResponse<UserClaims>) => {
+        if (response.success) {
+          const session = this.sessionService.createSessionUser(response);
+          if (session) {
+            this.router.navigate(["dashboard"]);
+          } else {
+            this.notification.openSnackBar(
+              "Error al crear iniciar sesión",
+              "warning",
+            );
+          }
+        } else {
+          this.notification.openSnackBar(response.message, "error");
+        }
+      });
+  }
+
+  onButtonPrimary(event: Event) {
+    console.log("onButtonPrimary", event);
+  }
+
+  onButtonSecondary(event: Event) {
+    console.log("onButtonSecondary", event);
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+/* ClientApp/src/app/components/federation/federation.component.css */
+
+
+
+
+--------------------------------------------------------------------------------
+
+<!-- ClientApp/src/app/components/federation/federation.component.html -->
+
+<bmb-loader
+  [title]="'Cargando...'"
+  [subtitle]="''"
+  [overlay]="false"
+  [isVisible]="true"
+  [errorState]="false"
+  [actions]="false"
+  [buttonPrimary]="'Reintentar'"
+  [buttonSecondary]="'Salir'"
+  (onButtonPrimary)="onButtonPrimary($event)"
+  (onButtonSecondary)="onButtonSecondary($event)"
+>
+</bmb-loader>
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/guard/user-session.guard.ts
+
+import { inject } from "@angular/core";
+import { CanActivateFn, Router } from "@angular/router";
+import { SessionService } from "../services/session.service";
+
+export const userSessionGuard: CanActivateFn = () => {
+  const sessionService = inject(SessionService);
+  const router = inject(Router);
+  const user = sessionService.sessionData;
+  if (user !== undefined && Object.entries(user).length !== 0) {
+    return true;
+  }
+  return router.parseUrl("/");
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/guard/admin.guard.ts
+
+import { inject } from "@angular/core";
+import { CanActivateFn, Router } from "@angular/router";
+import { SessionService } from "../services/session.service";
+
+export function roleGuard(...allowedRoles: string[]): CanActivateFn {
+  return () => {
+    const session = inject(SessionService).sessionData;
+    const router = inject(Router);
+
+    if (session && allowedRoles.includes(session.userType)) {
+      return true;
+    }
+
+    return router.parseUrl("/dashboard");
+  };
+}
+
+// Shortcut para mantener compatibilidad con rutas existentes
+export const adminGuard: CanActivateFn = roleGuard("Administrador");
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/interceptor/token-api.interceptor.ts
+
+import {
+  HttpRequest,
+  HttpInterceptorFn,
+  HttpHandlerFn,
+  HttpErrorResponse,
+} from "@angular/common/http";
+import { inject } from "@angular/core";
+import { SessionRefreshService } from "../services/session-refresh.service";
+import { catchError, throwError } from "rxjs";
+
+export const tokenApiInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<unknown>,
+  next: HttpHandlerFn,
+) => {
+  const sessionRefreshService = inject(SessionRefreshService);
+
+  const modifiedReq = req.clone({
+    setHeaders: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+
+  return next(modifiedReq).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401 || error.status === 403) {
+        sessionRefreshService.forceRefreshSession().subscribe();
+      }
+
+      return throwError(() => error);
+    }),
+  );
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/services/session-refresh.service.ts
+
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { BehaviorSubject, Observable, of, timer, Subscription } from "rxjs";
+import { catchError, map, tap, take, finalize } from "rxjs/operators";
+import { SessionService } from "./session.service";
+import { UserClaims } from "../models/user-claims.model";
+import { ApiResponse } from "../models/response-api.model";
+
+@Injectable({
+  providedIn: "root",
+})
+export class SessionRefreshService {
+  private refreshTimer: Subscription | null = null;
+  private isRefreshing = false;
+  private refreshInterval = 4 * 60 * 1000;
+  private lastRefreshTime = 0;
+
+  private sessionValidSubject = new BehaviorSubject<boolean>(true);
+  public sessionValid$ = this.sessionValidSubject.asObservable();
+
+  private http = inject(HttpClient);
+  private sessionService = inject(SessionService);
+
+  constructor() {
+    this.startAutoRefresh();
+  }
+
+  private startAutoRefresh(): void {
+    this.refreshTimer = timer(0, 60000).subscribe(() => {
+      this.checkAndRefreshSession();
+    });
+  }
+
+  private checkAndRefreshSession(): void {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - this.lastRefreshTime;
+
+    if (timeSinceLastRefresh >= this.refreshInterval) {
+      this.refreshSession().subscribe();
+    }
+  }
+
+  private refreshSession(): Observable<boolean> {
+    if (this.isRefreshing) {
+      return this.sessionValid$.pipe(take(1));
+    }
+
+    this.isRefreshing = true;
+
+    return this.http
+      .get<ApiResponse<UserClaims>>("Home/GetUserClaims")
+      .pipe(
+        tap((response) => {
+          if (response?.data) {
+            this.sessionService.createSessionUser(response);
+            this.lastRefreshTime = Date.now();
+            this.sessionValidSubject.next(true);
+          }
+        }),
+        map(() => true),
+        catchError(() => {
+          this.sessionValidSubject.next(false);
+          return of(false);
+        }),
+        finalize(() => {
+          this.isRefreshing = false;
+        }),
+      );
+  }
+
+  public forceRefreshSession(): Observable<boolean> {
+    return this.refreshSession();
+  }
+
+  public stopAutoRefresh(): void {
+    if (this.refreshTimer) {
+      this.refreshTimer.unsubscribe();
+      this.refreshTimer = null;
+    }
+  }
+
+  public isSessionValid(): boolean {
+    return this.sessionValidSubject.value;
+  }
+
+  public destroy(): void {
+    this.stopAutoRefresh();
+    this.sessionValidSubject.complete();
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/services/session.service.ts
+
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { UserClaims } from "../models/user-claims.model";
+import { BehaviorSubject, Observable } from "rxjs";
+import { ApiResponse } from "../models/response-api.model";
+
+@Injectable({
+  providedIn: "root",
+})
+export class SessionService {
+  private usuarioSubject: BehaviorSubject<UserClaims>;
+  private EMPTY!: UserClaims;
+  private http = inject(HttpClient);
+
+  constructor() {
+    this.usuarioSubject = new BehaviorSubject<UserClaims>(
+      JSON.parse(sessionStorage.getItem("sessionUser") ?? "{}"),
+    );
+  }
+
+  public getUserClaims() {
+    const url = `Home/GetUserClaims/`;
+    return this.http.get<UserClaims>(url);
+  }
+
+  public logout() {
+    sessionStorage.removeItem("sessionUser");
+    this.usuarioSubject.next(this.EMPTY);
+    const url = `Auth/Logout/`;
+    window.location.href = url;
+  }
+
+  public getSessionUser(): Observable<ApiResponse<UserClaims>> {
+    return this.http.get<ApiResponse<UserClaims>>(`Home/GetUserClaims`);
+  }
+
+  public get sessionData(): UserClaims {
+    return this.usuarioSubject.value;
+  }
+
+  public createSessionUser(response: ApiResponse<UserClaims>): boolean {
+    try {
+      const user: UserClaims = response.data;
+      sessionStorage.setItem("sessionUser", JSON.stringify(user));
+      this.usuarioSubject.next(user);
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/app/services/notification-snackbar.service.ts
+
+import { Injectable, inject } from "@angular/core";
+import { MatSnackBar } from "@angular/material/snack-bar";
+
+@Injectable({
+  providedIn: "root",
+})
+export class NotificationSnackbarService {
+  private snackBar = inject(MatSnackBar);
+
+  public openSnackBar(message: string, appearance: string) {
+    this.snackBar.open(message, "Cerrar", {
+      horizontalPosition: "end",
+      verticalPosition: "top",
+      duration: 6000,
+    });
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/environments/environment.interface.ts
+
+export interface Environment {
+  production: boolean;
+  surveyUrl: string;
+  homeUrl: string;
+  apiBaseUrl: string;
+}
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/environments/environment.pprd.ts
+
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
+  production: true,
+  surveyUrl:
+    'https://sitiosmiespacio.itesm.mx/publicos/evaluacionescsc/Paginas/Experiencia/intermediario_audiencias_experiencia.html?IDExp=195&Pruebas=Si',
+  homeUrl: 'https://mitecpprd.tec.mx/',
+  apiBaseUrl: '/',
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/environments/environment.prod.ts
+
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
+  production: true,
+  surveyUrl:
+    "https://sitiosmiespacio.itesm.mx/publicos/evaluacionescsc/Paginas/Experiencia/intermediario_audiencias_experiencia.html?IDExp=195",
+  homeUrl: "https://mitec.tec.mx/",
+  apiBaseUrl: "/",
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/environments/environment.ts
+
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
+  production: false,
+  surveyUrl:
+    "https://itesm.co1.qualtrics.com/jfe/form/SV_3kJW1MN8QQQZ3im?IDExp=195&Pruebas=Si",
+  homeUrl: "https://mitecpprd.tec.mx/",
+  apiBaseUrl: "https://localhost:5001/",
+};
+
+
+--------------------------------------------------------------------------------
+
+// ClientApp/src/assets/.gitkeep
+
+
+
+
+--------------------------------------------------------------------------------
+
+// wwwroot/.gitkeep
+
+
+
+
+--------------------------------------------------------------------------------
+
+// Models/Common/Response.cs
+
+namespace SECIHTI.Models.Common
+{
+    public class Response<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+
+        public Response(T data, string message = "OK")
+        {
+            Success = true;
+            Message = message;
+            Data = data;
+        }
+
+        public Response(string errorMessage)
+        {
+            Success = false;
+            Message = errorMessage;
+            Data = default;
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Models/Common/UserClaims.cs
+
+namespace SECIHTI.Models.Common
+{
+    public class UserClaims
+    {
+        public string? PersonID { get; set; }
+        public string? UserType { get; set; }
+        public string? PayrollID { get; set; }
+        public string? Email { get; set; }
+        public string? Profiles { get; set; }
+        public string? ITESMProfFuncionDesc { get; set; }
+        public string? ITESMProfFuncion { get; set; }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Common/AuthHelper.cs
+
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Serilog;
+using System;
+using System.Linq;
+using SECIHTI.Models.Common;
+
+namespace SECIHTI.Common
+{
+    public class AuthHelper
+    {
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public AuthHelper(IConfiguration configuration, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        {
+            _config = configuration;
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        public UserClaims GetClaims()
+        {
+            var userClaims = new UserClaims();
+
+            try
+            {
+                if (_config.GetValue<bool>("Auth:BypassSaml"))
+                {
+                    userClaims.PersonID = _config["UserImpersonation:PersonID"];
+                    userClaims.UserType = _config["UserImpersonation:UserType"];
+                    userClaims.PayrollID = _config["UserImpersonation:PayrollID"];
+                    userClaims.Email = _config["UserImpersonation:Email"];
+                    userClaims.Profiles = _config["UserImpersonation:Profiles"];
+                }
+                else if (_httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated == true)
+                {
+                    var claims = _httpContextAccessor.HttpContext.User.Identities.First().Claims.ToList();
+                    var mappings = _config.GetSection("ClaimMappings");
+
+                    string? GetClaim(string key, string fallback) =>
+                        claims.FirstOrDefault(x => x.Type.EndsWith(mappings[key] ?? fallback, StringComparison.OrdinalIgnoreCase))?.Value;
+
+                    userClaims.PersonID = GetClaim("PersonID", "IDPersona");
+                    userClaims.UserType = GetClaim("UserType", "TipoUsuario");
+                    userClaims.PayrollID = GetClaim("PayrollID", "nameidentifier");
+                    userClaims.Email = GetClaim("Email", "NAM_upn");
+                    userClaims.Profiles = GetClaim("Profiles", "perfiles");
+                    userClaims.ITESMProfFuncionDesc = GetClaim("ITESMProfFuncionDesc", "ITESMProfFuncionDesc");
+                    userClaims.ITESMProfFuncion = GetClaim("ITESMProfFuncion", "ITESMProfFuncion");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error en AuthHelper.GetClaims()");
+            }
+
+            return userClaims;
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Common/DevAuthHandler.cs
+
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Threading.Tasks;
+
+namespace SECIHTI.Common
+{
+    /// <summary>
+    /// Handler de autenticacion fake para desarrollo.
+    /// Se registra cuando Auth:BypassSaml = true para que [Authorize] funcione
+    /// sin necesidad de federacion SAML real.
+    /// Los claims se leen de appsettings > UserImpersonation.
+    /// </summary>
+    public class DevAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+    {
+        private readonly IConfiguration _config;
+
+        public DevAuthHandler(
+            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder,
+            IConfiguration config)
+            : base(options, logger, encoder)
+        {
+            _config = config;
+        }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var claims = new[]
+            {
+                new Claim("IDPersona", _config["UserImpersonation:PersonID"] ?? ""),
+                new Claim("TipoUsuario", _config["UserImpersonation:UserType"] ?? ""),
+                new Claim(ClaimTypes.NameIdentifier, _config["UserImpersonation:PayrollID"] ?? ""),
+                new Claim("NAM_upn", _config["UserImpersonation:Email"] ?? ""),
+                new Claim("perfiles", _config["UserImpersonation:Profiles"] ?? ""),
+            };
+
+            var identity = new ClaimsIdentity(claims, "DevAuth");
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, "DevAuth");
+
+            return Task.FromResult(AuthenticateResult.Success(ticket));
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Common/GlobalExceptionMiddleware.cs
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Net;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace SECIHTI.Common
+{
+    public class GlobalExceptionMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<GlobalExceptionMiddleware> _logger;
+
+        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
+
+        public async Task InvokeAsync(HttpContext context)
+        {
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ocurrió un error no controlado: {Message}", ex.Message);
+                await HandleExceptionAsync(context, ex);
+            }
+        }
+
+        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+        {
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+            var result = JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Ocurrió un error interno en el servidor.",
+                data = (object?)null
+            });
+
+            return context.Response.WriteAsync(result);
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Properties/launchSettings.json
+
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:1727",
+      "sslPort": 44349
+    }
+  },
+  "profiles": {
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "Secihti": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://0.0.0.0:5001;http://0.0.0.0:5000"
+    }
+  }
+}
+
+
+--------------------------------------------------------------------------------
+
+# github-workflow-templates/ci-cd-pprd.yml
+
+name: Deploy - PPRD
+
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      environment-name: 'PreProduction'
+      app-name: 'TU_APP_PPRD'
+      build-definition: 'BackOfficePPRD'
+      settings-var: ${{ vars.PPRD_JSON }}
+      verify-url: 'https://TU_APP_PPRD.azurewebsites.net'
+    secrets:
+      publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_PPRD }}
+
+
+--------------------------------------------------------------------------------
+
+# github-workflow-templates/ci-cd-devl.yml
+
+name: Deploy - DEVL
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      environment-name: 'Development'
+      app-name: 'TU_APP_DEVL'
+      build-definition: 'BackOfficeDEVL'
+      settings-var: ${{ vars.DEVL_JSON }}
+    secrets:
+      publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DEVL }}
+
+
+--------------------------------------------------------------------------------
+
+# github-workflow-templates/deploy-reusable.yml
+
+name: Reusable Deploy ASP.Net Core to Azure Web App
+
+on:
+  workflow_call:
+    inputs:
+      environment-name:
+        description: 'Nombre del ambiente (Development, PreProduction, Production)'
+        required: true
+        type: string
+      app-name:
+        description: 'Nombre de la Azure Web App'
+        required: true
+        type: string
+      build-definition:
+        description: 'Build_DefinitionName para Angular (BackOfficeDEVL, BackOfficePPRD, BackOfficePROD)'
+        required: true
+        type: string
+      settings-var:
+        description: 'Contenido de appsettings.json (pasar la variable del ambiente)'
+        required: true
+        type: string
+      verify-url:
+        description: 'URL para smoke test post-deploy (opcional)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      publish-profile:
+        description: 'Azure publish profile para el ambiente'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      Build_DefinitionName: ${{ inputs.build-definition }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Write appsettings.json
+        run: echo '${{ inputs.settings-var }}' > appsettings.json
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish -c Release -o ${{ env.DOTNET_ROOT }}/myapp --no-build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ${{ env.DOTNET_ROOT }}/myapp
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: ${{ inputs.environment-name }}
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: .net-app
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ inputs.app-name }}
+          slot-name: 'Production'
+          publish-profile: ${{ secrets.publish-profile }}
+          package: .
+          clean: true
+          restart: true
+
+      - name: Verify deployment
+        if: inputs.verify-url != ''
+        run: |
+          echo "Esperando que la app inicie..."
+          sleep 30
+          curl -f ${{ inputs.verify-url }}/Health || echo "App might still be starting"
+
+
+--------------------------------------------------------------------------------
+
+# github-workflow-templates/ci-cd-prod.yml
+
+name: Deploy - PROD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      environment-name: 'Production'
+      app-name: 'TU_APP_PROD'
+      build-definition: 'BackOfficePROD'
+      settings-var: ${{ vars.PROD_JSON }}
+      verify-url: 'https://TU_APP_PROD.azurewebsites.net'
+    secrets:
+      publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_PROD }}
+
+
+--------------------------------------------------------------------------------
+
+// Controllers/HomeController.cs
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using SECIHTI.Common;
+using SECIHTI.Models.Common;
+
+namespace SECIHTI.Controllers
+{
+    [ApiController]
+    [Route("[controller]/[action]")]
+    [Authorize]
+    [EnableCors("AllowedOrigins")]
+    public class HomeController : ControllerBase
+    {
+        private readonly AuthHelper AuthHelper;
+        private readonly IConfiguration Configuration;
+
+        public HomeController(IConfiguration configuration, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
+        {
+            AuthHelper = new AuthHelper(configuration, environment, httpContextAccessor);
+            Configuration = configuration;
+        }
+
+        [HttpGet]
+        public Response<UserClaims> GetUserClaims()
+        {
+            UserClaims userProfile = AuthHelper.GetClaims();
+            return new Response<UserClaims>(userProfile);
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+
+// Controllers/HealthController.cs
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+
+namespace SECIHTI.Controllers
+{
+    [ApiController]
+    [Route("[controller]")]
+    [AllowAnonymous]
+    public class HealthController : ControllerBase
+    {
+        private readonly IConfiguration _configuration;
+
+        public HealthController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        [HttpGet]
+        public IActionResult Get()
+        {
+            return Ok(new
+            {
+                status = "healthy",
+                samlConfigured = !string.IsNullOrEmpty(_configuration["Saml2:Issuer"]),
+                keyVaultConfigured = !string.IsNullOrEmpty(_configuration["keyVaultUri"]),
+            });
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+

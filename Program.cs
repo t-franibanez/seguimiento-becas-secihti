@@ -23,7 +23,23 @@ if (!builder.Environment.IsDevelopment())
     var keyVaultUri = configuration["KeyVaultUri"];
     if (!string.IsNullOrEmpty(keyVaultUri))
     {
-        configuration.AddAzureKeyVault(new Uri(keyVaultUri), new DefaultAzureCredential());
+        try
+        {
+            // Usamos ManagedIdentityCredential directamente en vez de DefaultAzureCredential
+            // para evitar el timeout largo de probar 7 métodos de autenticación en secuencia.
+            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                ManagedIdentityClientId = null, // System Assigned
+                Retry = { MaxRetries = 1, NetworkTimeout = TimeSpan.FromSeconds(15) }
+            });
+            configuration.AddAzureKeyVault(new Uri(keyVaultUri), credential);
+            Console.WriteLine($"Azure Key Vault conectado: {keyVaultUri}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ADVERTENCIA: No se pudo conectar a Key Vault ({keyVaultUri}). " +
+                              $"La app continuará con la configuración del appsettings.json. Error: {ex.Message}");
+        }
     }
 }
 

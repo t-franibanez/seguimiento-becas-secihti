@@ -62,7 +62,9 @@ EXTRA_IGNORE_PATTERNS: List[str] = [
     "extraction.json",
     "extraction_20260120.json",
     "xml_inputs/",
-    "ClientApp/src/component-examples/"
+    "ClientApp/src/component-examples/",
+    "README.md",
+    "github-workflow-templates/"
 ]
 
 # ----------------------------- .gitignore helpers -----------------------------

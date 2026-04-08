@@ -25,17 +25,28 @@ if (!builder.Environment.IsDevelopment())
     {
         try
         {
-            // Usamos ManagedIdentityCredential directamente para conectar en ~5 segundos
-            // en vez de DefaultAzureCredential que prueba ~10 métodos y tarda 6+ minutos.
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Console.WriteLine($"[KeyVault] Conectando a {keyVaultUri}...");
+
             var credential = new ManagedIdentityCredential();
             configuration.AddAzureKeyVault(new Uri(keyVaultUri), credential);
-            Console.WriteLine($"Azure Key Vault conectado: {keyVaultUri}");
+
+            sw.Stop();
+            Console.WriteLine($"[KeyVault] Conectado en {sw.Elapsed.TotalSeconds:F1}s");
+
+            // Log de diagnóstico: muestra qué claves se cargaron (sin valores)
+            var connStr = configuration.GetConnectionString("AzureSql");
+            Console.WriteLine($"[KeyVault] ConnectionStrings:AzureSql = {(string.IsNullOrEmpty(connStr) ? "❌ NO ENCONTRADA" : $"✅ Cargada ({connStr.Length} chars)")}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ADVERTENCIA: No se pudo conectar a Key Vault ({keyVaultUri}). " +
-                              $"La app continuará con la configuración del appsettings.json. Error: {ex.Message}");
+            Console.WriteLine($"[KeyVault] ❌ Error conectando a {keyVaultUri}: {ex.Message}");
+            // La app continúa con lo que tenga en appsettings.json
         }
+    }
+    else
+    {
+        Console.WriteLine("[KeyVault] ⚠️ KeyVaultUri está vacío, saltando Key Vault.");
     }
 }
 

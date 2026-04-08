@@ -30,6 +30,7 @@
     <PackageReference Include="ITfoxtec.Identity.Saml2" Version="4.11.3" />
     <PackageReference Include="ITfoxtec.Identity.Saml2.MvcCore" Version="4.11.3" />
     <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.7" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.72.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -74,9 +75,9 @@
    <Exec WorkingDirectory="$(SpaRoot)" Command="npm install --legacy-peer-deps " />
 
     <!-- 2. Compila según el entorno elegido -->
-  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PROD" Condition=" '$(Build_DefinitionName)' == 'BackOfficePROD'"/>   
-  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PPRD" Condition="'$(Build_DefinitionName)' == 'BackOfficePPRD'"/>
-  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:DEVL" Condition="'$(Build_DefinitionName)' == 'BackOfficeDEVL'"/>
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PROD" Condition=" '$(Build_DefinitionName)' == 'BackOfficePROD'" />   
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:PPRD" Condition="'$(Build_DefinitionName)' == 'BackOfficePPRD'" />
+  <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:DEVL" Condition="'$(Build_DefinitionName)' == 'BackOfficeDEVL'" />
 
     <!-- 3. (Opcional) build para SSR -->
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr" Condition=" '$(BuildServerSideRenderer)' == 'true' " />

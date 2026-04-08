@@ -174,6 +174,16 @@ if (!bypassSaml)
 {
     app.Use(async (context, next) =>
     {
+        // No interceptar rutas del controlador Auth (Login, ACS, Logout)
+        // ni el endpoint de Health para evitar loops de redirección
+        var path = context.Request.Path.Value ?? "";
+        if (path.StartsWith("/Auth/", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/Health", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
         if (!(context.User.Identity?.IsAuthenticated ?? false))
         {
             await context.ChallengeAsync(Saml2Constants.AuthenticationScheme);
@@ -184,6 +194,7 @@ if (!bypassSaml)
         }
     });
 }
+
 
 app.UseSpa(spa =>
 {

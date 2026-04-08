@@ -25,13 +25,9 @@ if (!builder.Environment.IsDevelopment())
     {
         try
         {
-            // Usamos ManagedIdentityCredential directamente en vez de DefaultAzureCredential
-            // para evitar el timeout largo de probar 7 métodos de autenticación en secuencia.
-            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-            {
-                ManagedIdentityClientId = null, // System Assigned
-                Retry = { MaxRetries = 1, NetworkTimeout = TimeSpan.FromSeconds(15) }
-            });
+            // Usamos ManagedIdentityCredential directamente para conectar en ~5 segundos
+            // en vez de DefaultAzureCredential que prueba ~10 métodos y tarda 6+ minutos.
+            var credential = new ManagedIdentityCredential();
             configuration.AddAzureKeyVault(new Uri(keyVaultUri), credential);
             Console.WriteLine($"Azure Key Vault conectado: {keyVaultUri}");
         }

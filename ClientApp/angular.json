@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "TEMPLATE": {
+    "secihti": {
       "root": "",
       "sourceRoot": "src",
       "projectType": "application",
@@ -107,18 +107,18 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "buildTarget": "TEMPLATE:build"
+            "buildTarget": "secihti:build"
           },
           "configurations": {
             "production": {
-              "buildTarget": "TEMPLATE:build:production"
+              "buildTarget": "secihti:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "buildTarget": "TEMPLATE:build"
+            "buildTarget": "secihti:build"
           }
         },
         "lint": {
